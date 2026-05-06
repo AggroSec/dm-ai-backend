@@ -1,0 +1,114 @@
+# =========================
+# Environment & Secrets
+# =========================
+.env
+.env.local
+.env.*.local
+
+# =========================
+# Go
+# =========================
+# Compiled binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Go coverage output
+*.out
+coverage.html
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency vendor directory (if not committing vendor)
+vendor/
+
+# =========================
+# Database
+# =========================
+# Local DB dumps or exports
+*.sql.bak
+*.dump
+*.db
+
+# =========================
+# IDE & Editor
+# =========================
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains (GoLand etc)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+\#*\#
+.\#*
+
+# =========================
+# OS
+# =========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.Trash-*
+
+# =========================
+# Logs
+# =========================
+*.log
+logs/
+
+# =========================
+# Build artifacts
+# =========================
+dist/
+tmp/
+
+# =========================
+# Python CLI client
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.venv/
+venv/
+env/
+.Python
+
+# Python egg/dist
+*.egg-info/
+dist/
+build/
+
+# =========================
+# Misc
+# =========================
+# Local notes you don't want committed
+scratch.md
+TODO.md
