@@ -22,3 +22,6 @@ generate:
 
 test:
 	go test ./...
+
+dbcon:
+	psql $(DB_URL)

@@ -1,0 +1,96 @@
+package server
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/AggroSec/dm-ai-backend/internal/auth"
+	"github.com/AggroSec/dm-ai-backend/internal/database"
+)
+
+type registerRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type registerResponse struct {
+	ID        string    `json:"user_id"`
+	Username  string    `json:"username"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type authResponse struct {
+	JWTToken string `json:"token"`
+	UserID   string `json:"user_id"`
+}
+
+func (s *Server) handlerRegisterUser(w http.ResponseWriter, r *http.Request) {
+	var req registerRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err))
+		return
+	}
+
+	hashPass, err := auth.HashPassword(req.Password)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, fmt.Sprintf("internal server error when hashing password: %v", err))
+		return
+	}
+
+	registerInfo := database.CreateUserParams{
+		Username:       req.Username,
+		HashedPassword: hashPass,
+	}
+
+	createdUser, err := s.db.CreateUser(r.Context(), registerInfo)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, fmt.Sprintf("user was not created: %v", err))
+		return
+	}
+
+	respondJSON(w, http.StatusCreated, registerResponse{
+		ID:        createdUser.ID.String(),
+		Username:  createdUser.Username,
+		CreatedAt: createdUser.CreatedAt,
+	})
+}
+
+func (s *Server) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err))
+		return
+	}
+
+	user, err := s.db.GetUserByUsername(r.Context(), req.Username)
+	if err != nil {
+		respondError(w, http.StatusUnauthorized, "invalid credentials")
+		return
+	}
+
+	err = auth.VerifyPassword(req.Password, user.HashedPassword)
+	if err != nil {
+		respondError(w, http.StatusUnauthorized, "invalid credentials")
+		return
+	}
+
+	jwtToken, err := auth.GenerateJWT(user.ID.String(), s.cfg.JWTSecret, s.cfg.JWTExpiry)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "token generation failed")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, authResponse{
+		JWTToken: jwtToken,
+		UserID:   user.ID.String(),
+	})
+}
