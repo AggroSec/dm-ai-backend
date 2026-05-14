@@ -26,6 +26,6 @@ func main() {
 	handler := srv.RegisterRoutes()
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
-	log.Printf("Starting AI DM SERVER on %s (env: %s)", addr, cfg.AppEnv)
+	log.Printf(" | Starting AI DM SERVER on %s (env: %s)", addr, cfg.AppEnv)
 	log.Fatal(http.ListenAndServe(addr, handler))
 }

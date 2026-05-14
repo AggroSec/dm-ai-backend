@@ -13,7 +13,7 @@ func (s *Server) requireAuth(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, err := getBearerToken(r)
 		if err != nil {
-			respondError(w, http.StatusUnauthorized, "unathorized")
+			respondError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 

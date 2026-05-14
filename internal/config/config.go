@@ -35,7 +35,7 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.JWTRefreshExpiry, err = parseDuration("JWT_EXPIRY", "168h")
+	cfg.JWTRefreshExpiry, err = parseDuration("JWT_REFRESH_EXPIRY", "168h")
 	if err != nil {
 		return nil, err
 	}

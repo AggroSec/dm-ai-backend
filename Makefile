@@ -25,3 +25,6 @@ test:
 
 dbcon:
 	psql $(DB_URL)
+
+run-log:
+	go run main.go 2>&1 | tee logs/server.log

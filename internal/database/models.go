@@ -5,10 +5,40 @@
 package database
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type Character struct {
+	ID                    uuid.UUID
+	UserID                uuid.UUID
+	Name                  string
+	Race                  string
+	Class                 string
+	Level                 int32
+	Experience            int32
+	DrivingFate           string
+	BindingFate           string
+	Strength              int32
+	Dexterity             int32
+	Fortitude             int32
+	Willpower             int32
+	Alacrity              int32
+	Wisdom                int32
+	MaxHp                 int32
+	CurrentHp             int32
+	MaxWp                 int32
+	CurrentWp             int32
+	ActionPoints          int32
+	TalentPointsAvailable int32
+	TalentsInvested       json.RawMessage
+	Inventory             json.RawMessage
+	StatusEffects         json.RawMessage
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
 
 type User struct {
 	ID             uuid.UUID

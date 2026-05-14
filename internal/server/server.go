@@ -25,6 +25,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	mux.HandleFunc("GET /health", s.handleHealth)
 	mux.HandleFunc("POST /auth/register", s.handlerRegisterUser)
 	mux.HandleFunc("POST /auth/login", s.handlerLoginUser)
+	mux.HandleFunc("POST /characters", s.requireAuth(s.handlerCreateCharacter))
+	mux.HandleFunc("GET /characters", s.requireAuth(s.handlerGetUserCharacters))
+	mux.HandleFunc("GET /characters/{id}", s.requireAuth(s.handlerGetCharacterByID))
 	return mux
 }
 

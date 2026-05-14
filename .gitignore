@@ -112,3 +112,5 @@ build/
 # Local notes you don't want committed
 scratch.md
 TODO.md
+scripts/
+logs/

@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -41,7 +42,8 @@ func (s *Server) handlerRegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	hashPass, err := auth.HashPassword(req.Password)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, fmt.Sprintf("internal server error when hashing password: %v", err))
+		log.Printf(" | error hashing password: %v", err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
@@ -52,15 +54,18 @@ func (s *Server) handlerRegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	createdUser, err := s.db.CreateUser(r.Context(), registerInfo)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, fmt.Sprintf("user was not created: %v", err))
+		log.Printf(" | user was not created: %v", err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	respondJSON(w, http.StatusCreated, registerResponse{
+	jsonResp := registerResponse{
 		ID:        createdUser.ID.String(),
 		Username:  createdUser.Username,
 		CreatedAt: createdUser.CreatedAt,
-	})
+	}
+	respondJSON(w, http.StatusCreated, jsonResp)
+	log.Printf(" | user register successfully: %v(%v)", jsonResp.Username, jsonResp.ID)
 }
 
 func (s *Server) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
@@ -73,18 +78,21 @@ func (s *Server) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.db.GetUserByUsername(r.Context(), req.Username)
 	if err != nil {
+		log.Printf(" | attempted login with wrong username: %v, err: %v", req.Username, err)
 		respondError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
 
 	err = auth.VerifyPassword(req.Password, user.HashedPassword)
 	if err != nil {
+		log.Printf(" | invalid login attempt for user: %v(%v), err: %v", user.Username, user.ID, err)
 		respondError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
 
 	jwtToken, err := auth.GenerateJWT(user.ID.String(), s.cfg.JWTSecret, s.cfg.JWTExpiry)
 	if err != nil {
+		log.Printf(" | failed to generate jwt for user: %v(%v), err: %v", user.Username, user.ID, err)
 		respondError(w, http.StatusInternalServerError, "token generation failed")
 		return
 	}
@@ -93,4 +101,5 @@ func (s *Server) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		JWTToken: jwtToken,
 		UserID:   user.ID.String(),
 	})
+	log.Printf(" | jwt created successfully for: %v(%v)", user.Username, user.ID)
 }
