@@ -35,9 +35,19 @@ type Character struct {
 	TalentPointsAvailable int32
 	TalentsInvested       json.RawMessage
 	Inventory             json.RawMessage
-	StatusEffects         json.RawMessage
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+}
+
+type StatusEffect struct {
+	ID          uuid.UUID
+	CharacterID uuid.UUID
+	Effect      string
+	Duration    int32
+	IsActive    bool
+	Persists    bool
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type User struct {

@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -36,7 +35,7 @@ func (s *Server) handlerRegisterUser(w http.ResponseWriter, r *http.Request) {
 	var req registerRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err))
+		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
@@ -72,7 +71,7 @@ func (s *Server) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		respondError(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err))
+		respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 

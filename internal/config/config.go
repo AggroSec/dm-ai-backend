@@ -12,6 +12,7 @@ type Config struct {
 	JWTSecret           string
 	JWTExpiry           time.Duration
 	JWTRefreshExpiry    time.Duration
+	InternalSecret      string
 	OpenRouterAPIKey    string
 	OpenRouterModel     string
 	OpenRouterMaxTokens int
@@ -24,6 +25,7 @@ func LoadConfig() (*Config, error) {
 
 	cfg.DBURL = requireEnv("DB_URL")
 	cfg.JWTSecret = requireEnv("JWT_SECRET")
+	cfg.InternalSecret = requireEnv("INTERNAL_SECRET")
 	cfg.OpenRouterAPIKey = requireEnv("OPENROUTER_API_KEY")
 	cfg.OpenRouterModel = requireEnv("OPENROUTER_MODEL")
 

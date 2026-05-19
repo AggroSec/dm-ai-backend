@@ -3,7 +3,7 @@ include .env
 export
 
 run:
-	go run main.go
+	-go run main.go
 
 build:
 	go build -o bin/server main.go
@@ -27,4 +27,4 @@ dbcon:
 	psql $(DB_URL)
 
 run-log:
-	go run main.go 2>&1 | tee logs/server.log
+	-go run main.go 2>&1 | tee logs/server.log

@@ -34,8 +34,8 @@ type characterResponse struct {
 	TalentPointsAvailable int32           `json:"talent_points_available"`
 	TalentsInvested       json.RawMessage `json:"talents_invested"`
 	Inventory             json.RawMessage `json:"inventory"`
-	StatusEffects         json.RawMessage `json:"status_effects"`
-	UpdatedAt             time.Time       `json:"updated_at"`
+	//StatusEffects         json.RawMessage `json:"status_effects"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func (s *Server) handlerCreateCharacter(w http.ResponseWriter, r *http.Request) {
@@ -74,6 +74,9 @@ func (s *Server) handlerCreateCharacter(w http.ResponseWriter, r *http.Request) 
 	}
 
 	user, err := s.db.GetUserByID(r.Context(), userUUID)
+	if err != nil {
+		log.Printf(" | internal server error - was not able to retrieve user: %v", err)
+	}
 	log.Printf(" | [CharacterCreation]character: %v(%v) was successfully created for %v(%v)", character.Name, character.ID, user.Username, user.ID)
 	respondJSON(w, http.StatusCreated, dbCharacterToResponse(character))
 }
@@ -100,6 +103,9 @@ func (s *Server) handlerGetUserCharacters(w http.ResponseWriter, r *http.Request
 	}
 
 	user, err := s.db.GetUserByID(r.Context(), userUUID)
+	if err != nil {
+		log.Printf(" | internal server error - was not able to retrieve user: %v", err)
+	}
 	log.Printf(" | [CharacterInfo] retrieved character list of: %v(%v)", user.Username, user.ID)
 	respondJSON(w, http.StatusOK, response)
 }
@@ -253,8 +259,8 @@ func dbCharacterToResponse(c database.Character) characterResponse {
 		TalentPointsAvailable: c.TalentPointsAvailable,
 		TalentsInvested:       c.TalentsInvested,
 		Inventory:             c.Inventory,
-		StatusEffects:         c.StatusEffects,
-		UpdatedAt:             c.UpdatedAt,
+		//StatusEffects:         c.StatusEffects,
+		UpdatedAt: c.UpdatedAt,
 	}
 }
 

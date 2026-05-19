@@ -17,7 +17,7 @@ func main() {
 	}
 	dbcon, err := database.ConnectDB(cfg.DBURL)
 	if err != nil {
-		log.Printf("connection to database failed, check dburl: %v\n", err)
+		log.Fatalf("connection to database failed, check dburl: %v\n", err)
 	}
 
 	db := database.New(dbcon)

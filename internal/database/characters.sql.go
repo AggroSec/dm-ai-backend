@@ -16,7 +16,7 @@ const createCharacter = `-- name: CreateCharacter :one
 
 INSERT INTO characters (name, class, user_id)
 values ($1, $2, $3)
-returning id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, status_effects, created_at, updated_at
+returning id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at
 `
 
 type CreateCharacterParams struct {
@@ -52,7 +52,6 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 		&i.TalentPointsAvailable,
 		&i.TalentsInvested,
 		&i.Inventory,
-		&i.StatusEffects,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -76,7 +75,7 @@ func (q *Queries) DeleteCharacter(ctx context.Context, arg DeleteCharacterParams
 
 const getCharacterByID = `-- name: GetCharacterByID :one
 
-select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, status_effects, created_at, updated_at from characters where id = $1 AND user_id = $2
+select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at from characters where id = $1 AND user_id = $2
 `
 
 type GetCharacterByIDParams struct {
@@ -111,7 +110,6 @@ func (q *Queries) GetCharacterByID(ctx context.Context, arg GetCharacterByIDPara
 		&i.TalentPointsAvailable,
 		&i.TalentsInvested,
 		&i.Inventory,
-		&i.StatusEffects,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -120,7 +118,7 @@ func (q *Queries) GetCharacterByID(ctx context.Context, arg GetCharacterByIDPara
 
 const getCharacterByUserID = `-- name: GetCharacterByUserID :many
 
-select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, status_effects, created_at, updated_at from characters where user_id = $1
+select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at from characters where user_id = $1
 `
 
 func (q *Queries) GetCharacterByUserID(ctx context.Context, userID uuid.UUID) ([]Character, error) {
@@ -156,7 +154,6 @@ func (q *Queries) GetCharacterByUserID(ctx context.Context, userID uuid.UUID) ([
 			&i.TalentPointsAvailable,
 			&i.TalentsInvested,
 			&i.Inventory,
-			&i.StatusEffects,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -197,7 +194,7 @@ SET name = $1,
     inventory = $19,
     updated_at = NOW()
 WHERE id = $20 AND user_id = $21
-RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, status_effects, created_at, updated_at
+RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at
 `
 
 type UpdateCharacterParams struct {
@@ -273,7 +270,6 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		&i.TalentPointsAvailable,
 		&i.TalentsInvested,
 		&i.Inventory,
-		&i.StatusEffects,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
