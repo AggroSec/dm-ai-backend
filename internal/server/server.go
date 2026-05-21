@@ -31,6 +31,9 @@ func (s *Server) RegisterRoutes() http.Handler {
 	mux.HandleFunc("PUT /characters/{id}", s.requireAuth(s.handlerUpdateCharacter))
 	mux.HandleFunc("DELETE /characters/{id}", s.requireAuth(s.handlerDeleteCharacter))
 	mux.HandleFunc("POST /rolls", s.handlerDiceRolls)
+	mux.HandleFunc("POST /characters/{id}/status_effects", s.requireInternal(s.handlerApplyStatusEffect))
+	mux.HandleFunc("GET /characters/{id}/status_effects", s.requireAuth(s.handlerGetStatusEffectsByID))
+	mux.HandleFunc("POST /characters/{id}/status_effects/tick", s.requireInternal(s.handlerStatusEffectsTick))
 	return mux
 }
 

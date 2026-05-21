@@ -5,11 +5,63 @@
 package database
 
 import (
+	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type CombatStatus string
+
+const (
+	CombatStatusActive CombatStatus = "active"
+	CombatStatusEnded  CombatStatus = "ended"
+)
+
+func (e *CombatStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = CombatStatus(s)
+	case string:
+		*e = CombatStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for CombatStatus: %T", src)
+	}
+	return nil
+}
+
+type NullCombatStatus struct {
+	CombatStatus CombatStatus
+	Valid        bool // Valid is true if CombatStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullCombatStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.CombatStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.CombatStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullCombatStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.CombatStatus), nil
+}
+
+type Campaign struct {
+	ID        uuid.UUID
+	Name      string
+	OwnerID   uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
 
 type Character struct {
 	ID                    uuid.UUID
@@ -37,6 +89,18 @@ type Character struct {
 	Inventory             json.RawMessage
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+}
+
+type CombatSession struct {
+	ID          uuid.UUID
+	CampaignID  uuid.NullUUID
+	Status      CombatStatus
+	Round       int32
+	CurrentTurn uuid.UUID
+	TurnOrder   json.RawMessage
+	Combatants  json.RawMessage
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type StatusEffect struct {
