@@ -34,10 +34,20 @@ SET name = $1,
     talents_invested = $17,
     talent_points_available = $18,
     inventory = $19,
-    updated_at = NOW()
-WHERE id = $20 AND user_id = $21
+    updated_at = NOW(),
+    max_ap = $20,
+    overcap_ap = $21,
+    action_points = $22
+
+WHERE id = $23 AND user_id = $24
 RETURNING *;
 
 -- name: DeleteCharacter :exec
 
 delete from characters where id = $1 and user_id = $2;
+
+-- name: UpdateCharacterHP :exec
+UPDATE characters SET current_hp = $2 WHERE id = $1;
+
+-- name: UpdateCharacterWP :exec  
+UPDATE characters SET current_wp = $2 WHERE id = $1;

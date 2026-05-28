@@ -16,7 +16,7 @@ const createCharacter = `-- name: CreateCharacter :one
 
 INSERT INTO characters (name, class, user_id)
 values ($1, $2, $3)
-returning id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at
+returning id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap
 `
 
 type CreateCharacterParams struct {
@@ -54,6 +54,8 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 		&i.Inventory,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MaxAp,
+		&i.OvercapAp,
 	)
 	return i, err
 }
@@ -75,7 +77,7 @@ func (q *Queries) DeleteCharacter(ctx context.Context, arg DeleteCharacterParams
 
 const getCharacterByID = `-- name: GetCharacterByID :one
 
-select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at from characters where id = $1 AND user_id = $2
+select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap from characters where id = $1 AND user_id = $2
 `
 
 type GetCharacterByIDParams struct {
@@ -112,13 +114,15 @@ func (q *Queries) GetCharacterByID(ctx context.Context, arg GetCharacterByIDPara
 		&i.Inventory,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MaxAp,
+		&i.OvercapAp,
 	)
 	return i, err
 }
 
 const getCharacterByUserID = `-- name: GetCharacterByUserID :many
 
-select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at from characters where user_id = $1
+select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap from characters where user_id = $1
 `
 
 func (q *Queries) GetCharacterByUserID(ctx context.Context, userID uuid.UUID) ([]Character, error) {
@@ -156,6 +160,8 @@ func (q *Queries) GetCharacterByUserID(ctx context.Context, userID uuid.UUID) ([
 			&i.Inventory,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MaxAp,
+			&i.OvercapAp,
 		); err != nil {
 			return nil, err
 		}
@@ -192,9 +198,13 @@ SET name = $1,
     talents_invested = $17,
     talent_points_available = $18,
     inventory = $19,
-    updated_at = NOW()
-WHERE id = $20 AND user_id = $21
-RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at
+    updated_at = NOW(),
+    max_ap = $20,
+    overcap_ap = $21,
+    action_points = $22
+
+WHERE id = $23 AND user_id = $24
+RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap
 `
 
 type UpdateCharacterParams struct {
@@ -217,6 +227,9 @@ type UpdateCharacterParams struct {
 	TalentsInvested       json.RawMessage
 	TalentPointsAvailable int32
 	Inventory             json.RawMessage
+	MaxAp                 int32
+	OvercapAp             int32
+	ActionPoints          int32
 	ID                    uuid.UUID
 	UserID                uuid.UUID
 }
@@ -242,6 +255,9 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		arg.TalentsInvested,
 		arg.TalentPointsAvailable,
 		arg.Inventory,
+		arg.MaxAp,
+		arg.OvercapAp,
+		arg.ActionPoints,
 		arg.ID,
 		arg.UserID,
 	)
@@ -272,6 +288,36 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		&i.Inventory,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MaxAp,
+		&i.OvercapAp,
 	)
 	return i, err
+}
+
+const updateCharacterHP = `-- name: UpdateCharacterHP :exec
+UPDATE characters SET current_hp = $2 WHERE id = $1
+`
+
+type UpdateCharacterHPParams struct {
+	ID        uuid.UUID
+	CurrentHp int32
+}
+
+func (q *Queries) UpdateCharacterHP(ctx context.Context, arg UpdateCharacterHPParams) error {
+	_, err := q.db.ExecContext(ctx, updateCharacterHP, arg.ID, arg.CurrentHp)
+	return err
+}
+
+const updateCharacterWP = `-- name: UpdateCharacterWP :exec
+UPDATE characters SET current_wp = $2 WHERE id = $1
+`
+
+type UpdateCharacterWPParams struct {
+	ID        uuid.UUID
+	CurrentWp int32
+}
+
+func (q *Queries) UpdateCharacterWP(ctx context.Context, arg UpdateCharacterWPParams) error {
+	_, err := q.db.ExecContext(ctx, updateCharacterWP, arg.ID, arg.CurrentWp)
+	return err
 }

@@ -28,12 +28,17 @@ func (s *Server) RegisterRoutes() http.Handler {
 	mux.HandleFunc("POST /characters", s.requireAuth(s.handlerCreateCharacter))
 	mux.HandleFunc("GET /characters", s.requireAuth(s.handlerGetUserCharacters))
 	mux.HandleFunc("GET /characters/{id}", s.requireAuth(s.handlerGetCharacterByID))
-	mux.HandleFunc("PUT /characters/{id}", s.requireAuth(s.handlerUpdateCharacter))
+	mux.HandleFunc("PUT /characters/{id}", s.requireInternal(s.handlerUpdateCharacter))
 	mux.HandleFunc("DELETE /characters/{id}", s.requireAuth(s.handlerDeleteCharacter))
 	mux.HandleFunc("POST /rolls", s.handlerDiceRolls)
 	mux.HandleFunc("POST /characters/{id}/status_effects", s.requireInternal(s.handlerApplyStatusEffect))
 	mux.HandleFunc("GET /characters/{id}/status_effects", s.requireAuth(s.handlerGetStatusEffectsByID))
 	mux.HandleFunc("POST /characters/{id}/status_effects/tick", s.requireInternal(s.handlerStatusEffectsTick))
+	mux.HandleFunc("POST /combat", s.requireInternal(s.handlerStartCombat))
+	mux.HandleFunc("GET /combat/{id}", s.requireAuth(s.handlerGetActiveCombatSession))
+	mux.HandleFunc("POST /combat/{id}/turn", s.requireInternal(s.handlerAdvanceTurn))
+	mux.HandleFunc("POST /combat/{id}/action", s.requireInternal(s.handlerTakeAction))
+	mux.HandleFunc("POST /combat/{id}/end", s.requireInternal(s.handlerEndCombat))
 	return mux
 }
 

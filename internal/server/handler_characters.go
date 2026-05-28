@@ -30,7 +30,9 @@ type characterResponse struct {
 	CurrentHP             int32           `json:"current_hp"`
 	MaxWP                 int32           `json:"max_wp"`
 	CurrentWP             int32           `json:"current_wp"`
-	ActionPoints          int32           `json:"action_points"`
+	CurrentAP             int32           `json:"current_ap"`
+	MaxAP                 int32           `json:"max_ap"`
+	OvercapAP             int32           `json:"overcap_ap"`
 	TalentPointsAvailable int32           `json:"talent_points_available"`
 	TalentsInvested       json.RawMessage `json:"talents_invested"`
 	Inventory             json.RawMessage `json:"inventory"`
@@ -194,6 +196,9 @@ func (s *Server) handlerUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		TalentsInvested:       character.TalentsInvested,
 		TalentPointsAvailable: character.TalentPointsAvailable,
 		Inventory:             character.Inventory,
+		ActionPoints:          character.ActionPoints,
+		MaxAp:                 character.MaxAp,
+		OvercapAp:             character.OvercapAp,
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update character")
@@ -255,7 +260,9 @@ func dbCharacterToResponse(c database.Character) characterResponse {
 		CurrentHP:             c.CurrentHp,
 		MaxWP:                 c.MaxWp,
 		CurrentWP:             c.CurrentWp,
-		ActionPoints:          c.ActionPoints,
+		CurrentAP:             c.ActionPoints,
+		MaxAP:                 c.MaxAp,
+		OvercapAP:             c.OvercapAp,
 		TalentPointsAvailable: c.TalentPointsAvailable,
 		TalentsInvested:       c.TalentsInvested,
 		Inventory:             c.Inventory,
@@ -281,6 +288,9 @@ type updateCharacterRequest struct {
 	CurrentHP             *int32          `json:"current_hp"`
 	MaxWP                 *int32          `json:"max_wp"`
 	CurrentWP             *int32          `json:"current_wp"`
+	CurrentAP             *int32          `json:"current_ap"`
+	MaxAP                 *int32          `json:"max_ap"`
+	OvercapAP             *int32          `json:"overcap_ap"`
 	TalentPointsAvailable *int32          `json:"talent_points_available"`
 	TalentsInvested       json.RawMessage `json:"talents_invested"`
 	Inventory             json.RawMessage `json:"inventory"`
@@ -334,6 +344,15 @@ func applyCharacterUpdates(c *database.Character, req updateCharacterRequest) {
 	}
 	if req.CurrentWP != nil {
 		c.CurrentWp = *req.CurrentWP
+	}
+	if req.CurrentAP != nil {
+		c.ActionPoints = *req.CurrentAP
+	}
+	if req.MaxAP != nil {
+		c.MaxAp = *req.MaxAP
+	}
+	if req.OvercapAP != nil {
+		c.OvercapAp = *req.OvercapAP
 	}
 	if req.TalentPointsAvailable != nil {
 		c.TalentPointsAvailable = *req.TalentPointsAvailable

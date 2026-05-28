@@ -89,6 +89,8 @@ type Character struct {
 	Inventory             json.RawMessage
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
+	MaxAp                 int32
+	OvercapAp             int32
 }
 
 type CombatSession struct {
