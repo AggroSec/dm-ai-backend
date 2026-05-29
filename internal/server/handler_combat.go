@@ -78,7 +78,7 @@ func (s *Server) handlerStartCombat(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	newSession, err := game.CreateCombatSession(r.Context(), s.db, party, npcs, uuid.Nil)
+	newSession, err := game.CreateCombatSession(r.Context(), s.db, party, npcs, nil)
 	if err != nil {
 		logCombatHandlerError("failed to create combat session", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")

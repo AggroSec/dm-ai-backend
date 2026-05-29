@@ -50,13 +50,10 @@ type PartyMember struct {
 	UserID      uuid.UUID `json:"user_id"`
 }
 
-func CreateCombatSession(ctx context.Context, db *database.Queries, party []PartyMember, npcs []Combatant, campaignID uuid.UUID) (CombatSession, error) {
+func CreateCombatSession(ctx context.Context, db *database.Queries, party []PartyMember, npcs []Combatant, campaignID *uuid.UUID) (CombatSession, error) {
 	var session CombatSession
 	for _, member := range party {
-		dbPlayer, err := db.GetCharacterByID(ctx, database.GetCharacterByIDParams{
-			ID:     member.CharacterID,
-			UserID: member.UserID,
-		})
+		dbPlayer, err := db.GetCharacterByID(ctx, member.CharacterID)
 		if err != nil {
 			return CombatSession{}, err
 		}
@@ -196,25 +193,7 @@ func AdvanceTurn(ctx context.Context, sessionID uuid.UUID, db *database.Queries)
 
 	StartTurn(&session)
 
-	turnOrderJSON, err := json.Marshal(session.TurnOrder)
-	if err != nil {
-		return CombatSession{}, err
-	}
-	combatantsJSON, err := json.Marshal(session.Combatants)
-	if err != nil {
-		return CombatSession{}, err
-	}
-
-	_, err = db.UpdateCombatState(context.Background(), database.UpdateCombatStateParams{
-		ID:          session.ID,
-		CurrentTurn: session.CurrentTurn,
-		TurnOrder:   turnOrderJSON,
-		Combatants:  combatantsJSON,
-		Round:       int32(session.Round),
-	})
-	if err != nil {
-		return CombatSession{}, err
-	}
+	saveCombatState(ctx, db, &session)
 
 	return session, nil
 }
@@ -273,27 +252,18 @@ func ProcessAction(ctx context.Context, db *database.Queries, sessionID, actorID
 	}
 
 	if outcome := CheckCombatEnd(&session); outcome != "" {
+		err = saveCombatState(ctx, db, &session)
+		if err != nil {
+			return CombatSession{}, err
+		}
 		return EndCombat(ctx, db, session.ID, outcome)
 	}
 
-	turnOrderJSON, err := json.Marshal(session.TurnOrder)
+	err = saveCombatState(ctx, db, &session)
 	if err != nil {
 		return CombatSession{}, err
 	}
-	combatantsJSON, err := json.Marshal(session.Combatants)
-	if err != nil {
-		return CombatSession{}, err
-	}
-	_, err = db.UpdateCombatState(ctx, database.UpdateCombatStateParams{
-		ID:          session.ID,
-		CurrentTurn: session.CurrentTurn,
-		TurnOrder:   turnOrderJSON,
-		Combatants:  combatantsJSON,
-		Round:       int32(session.Round),
-	})
-	if err != nil {
-		return CombatSession{}, err
-	}
+
 	return session, nil
 }
 
@@ -336,19 +306,7 @@ func EndCombat(ctx context.Context, db *database.Queries, sessionID uuid.UUID, o
 		}
 	}
 
-	combatantsJSON, err := json.Marshal(session.Combatants)
-	if err != nil {
-		return CombatSession{}, err
-	}
-
-	// Save updated combatants (WP reset) before ending session
-	_, err = db.UpdateCombatState(ctx, database.UpdateCombatStateParams{
-		ID:          session.ID,
-		CurrentTurn: session.CurrentTurn,
-		TurnOrder:   dbCombatSession.TurnOrder,
-		Combatants:  combatantsJSON,
-		Round:       dbCombatSession.Round,
-	})
+	err = saveCombatState(ctx, db, &session)
 	if err != nil {
 		return CombatSession{}, err
 	}
@@ -436,4 +394,24 @@ func CheckCombatEnd(session *CombatSession) string {
 		return "defeat"
 	}
 	return ""
+}
+
+// helper function for updating database with new combat state
+func saveCombatState(ctx context.Context, db *database.Queries, session *CombatSession) error {
+	turnOrderJSON, err := json.Marshal(session.TurnOrder)
+	if err != nil {
+		return err
+	}
+	combatantsJSON, err := json.Marshal(session.Combatants)
+	if err != nil {
+		return err
+	}
+	_, err = db.UpdateCombatState(ctx, database.UpdateCombatStateParams{
+		ID:          session.ID,
+		CurrentTurn: session.CurrentTurn,
+		TurnOrder:   turnOrderJSON,
+		Combatants:  combatantsJSON,
+		Round:       int32(session.Round),
+	})
+	return err
 }

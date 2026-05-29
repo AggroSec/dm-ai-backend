@@ -6,7 +6,7 @@ returning *;
 
 -- name: GetCharacterByID :one
 
-select * from characters where id = $1 AND user_id = $2;
+select * from characters where id = $1;
 
 -- name: GetCharacterByUserID :many
 
@@ -39,7 +39,7 @@ SET name = $1,
     overcap_ap = $21,
     action_points = $22
 
-WHERE id = $23 AND user_id = $24
+WHERE id = $23
 RETURNING *;
 
 -- name: DeleteCharacter :exec
@@ -51,3 +51,6 @@ UPDATE characters SET current_hp = $2 WHERE id = $1;
 
 -- name: UpdateCharacterWP :exec  
 UPDATE characters SET current_wp = $2 WHERE id = $1;
+
+-- name: ValidateCharacterOwnership :one
+SELECT id FROM characters WHERE id = $1 AND user_id = $2;

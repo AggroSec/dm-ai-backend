@@ -113,12 +113,6 @@ func (s *Server) handlerGetUserCharacters(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Server) handlerGetCharacterByID(w http.ResponseWriter, r *http.Request) {
-	userID, err := uuid.Parse(r.Context().Value("userID").(string))
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "invalid userID")
-		log.Printf(" | [CharacterInfo] failed to extract userID: %v", err)
-		return
-	}
 	characterID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "invalid characterID")
@@ -126,10 +120,7 @@ func (s *Server) handlerGetCharacterByID(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	character, err := s.db.GetCharacterByID(r.Context(), database.GetCharacterByIDParams{
-		UserID: userID,
-		ID:     characterID,
-	})
+	character, err := s.db.GetCharacterByID(r.Context(), characterID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "character not found")
 		log.Printf(" | [CharacterInfo] failed to retrieve character from db: %v", err)
@@ -147,17 +138,8 @@ func (s *Server) handlerUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		log.Printf(" | [CharacterUpdate] failed to convert to UUID: %v", err)
 		return
 	}
-	userID, err := uuid.Parse(r.Context().Value("userID").(string))
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "invalid userID")
-		log.Printf(" | [CharacterUpdate] failed to extract userID: %v", err)
-		return
-	}
 
-	character, err := s.db.GetCharacterByID(r.Context(), database.GetCharacterByIDParams{
-		UserID: userID,
-		ID:     characterID,
-	})
+	character, err := s.db.GetCharacterByID(r.Context(), characterID)
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "character not found")
 		log.Printf(" | [CharacterUpdate] failed to retrieve character from db: %v", err)
@@ -176,7 +158,6 @@ func (s *Server) handlerUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 
 	updated, err := s.db.UpdateCharacter(r.Context(), database.UpdateCharacterParams{
 		ID:                    characterID,
-		UserID:                userID,
 		Name:                  character.Name,
 		Race:                  character.Race,
 		Class:                 character.Class,

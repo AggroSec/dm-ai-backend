@@ -27,7 +27,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	mux.HandleFunc("POST /auth/login", s.handlerLoginUser)
 	mux.HandleFunc("POST /characters", s.requireAuth(s.handlerCreateCharacter))
 	mux.HandleFunc("GET /characters", s.requireAuth(s.handlerGetUserCharacters))
-	mux.HandleFunc("GET /characters/{id}", s.requireAuth(s.handlerGetCharacterByID))
+	mux.HandleFunc("GET /characters/{id}", s.handlerGetCharacterByID)
 	mux.HandleFunc("PUT /characters/{id}", s.requireInternal(s.handlerUpdateCharacter))
 	mux.HandleFunc("DELETE /characters/{id}", s.requireAuth(s.handlerDeleteCharacter))
 	mux.HandleFunc("POST /rolls", s.handlerDiceRolls)

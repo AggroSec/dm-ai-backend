@@ -77,16 +77,11 @@ func (q *Queries) DeleteCharacter(ctx context.Context, arg DeleteCharacterParams
 
 const getCharacterByID = `-- name: GetCharacterByID :one
 
-select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap from characters where id = $1 AND user_id = $2
+select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap from characters where id = $1
 `
 
-type GetCharacterByIDParams struct {
-	ID     uuid.UUID
-	UserID uuid.UUID
-}
-
-func (q *Queries) GetCharacterByID(ctx context.Context, arg GetCharacterByIDParams) (Character, error) {
-	row := q.db.QueryRowContext(ctx, getCharacterByID, arg.ID, arg.UserID)
+func (q *Queries) GetCharacterByID(ctx context.Context, id uuid.UUID) (Character, error) {
+	row := q.db.QueryRowContext(ctx, getCharacterByID, id)
 	var i Character
 	err := row.Scan(
 		&i.ID,
@@ -203,7 +198,7 @@ SET name = $1,
     overcap_ap = $21,
     action_points = $22
 
-WHERE id = $23 AND user_id = $24
+WHERE id = $23
 RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap
 `
 
@@ -231,7 +226,6 @@ type UpdateCharacterParams struct {
 	OvercapAp             int32
 	ActionPoints          int32
 	ID                    uuid.UUID
-	UserID                uuid.UUID
 }
 
 func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams) (Character, error) {
@@ -259,7 +253,6 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		arg.OvercapAp,
 		arg.ActionPoints,
 		arg.ID,
-		arg.UserID,
 	)
 	var i Character
 	err := row.Scan(
