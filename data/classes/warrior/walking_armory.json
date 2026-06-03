@@ -1,0 +1,37 @@
+{
+  "class": "Warrior",
+  "branch": "walking_armory",
+  "description": "Master of weapon switching. Adapts to any situation by having the right weapon for the right moment. Rewards smooth transitions between weapons.",
+  "skills": [
+    {
+      "id": "sheath_and_strike",
+      "name": "Sheath and Strike",
+      "level_required": 1,
+      "ap_cost": 1,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Swap to another weapon and immediately attack with it. The fluid motion makes the strike more accurate.",
+      "ai_instruction": "Swap actor's equipped weapon to another weapon in their inventory. Make physical attack roll (1d20 + Strength modifier + Dexterity modifier) vs target AC — uses both modifiers for accuracy. On hit deal weapon dice + Strength modifier damage (Strength modifier only for damage). Call apply_damage on hit. Narrate the smooth weapon transition. On crit: max weapon die + roll + Strength modifier."
+    },
+    {
+      "id": "arsenal_strike",
+      "name": "Arsenal Strike",
+      "level_required": 2,
+      "ap_cost": 1,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Attack with your current weapon then immediately swap and strike again at reduced damage.",
+      "ai_instruction": "Make physical attack roll (1d20 + Strength modifier) vs target AC for first attack. On hit deal weapon dice + Strength modifier damage. Then swap to another weapon in inventory and make a second attack roll (1d20 + Strength modifier) vs target AC. On hit deal half of first hit's damage (round down). Call apply_damage twice if both hit. Narrate the aggressive weapon swap. Each hit independently can crit."
+    },
+    {
+      "id": "weapon_rhythm",
+      "name": "Weapon Rhythm",
+      "level_required": 3,
+      "ap_cost": 0,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Passive. Each weapon swap this turn builds combat rhythm, increasing attack accuracy. Stacks up to 3, expires at start of next turn.",
+      "ai_instruction": "Passive skill. Each time actor swaps weapons this turn apply one Rhythm stack (max 3 stacks). Each stack adds +1 to all attack rolls this turn. Rhythm stacks expire at the start of actor's next turn — reset to 0. Track stacks as a status effect count. Narrate growing combat momentum with each swap."
+    }
+  ]
+}

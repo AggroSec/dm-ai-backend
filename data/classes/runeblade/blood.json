@@ -1,0 +1,37 @@
+{
+  "class": "Runeblade",
+  "branch": "blood",
+  "description": "Sacrifice your own life force to fuel devastating attacks. High risk, high reward. Rewards Strength, Fortitude, and Willpower investment.",
+  "skills": [
+    {
+      "id": "etch_blood_rune",
+      "name": "Etch Blood Rune",
+      "level_required": 1,
+      "ap_cost": 0,
+      "wp_cost": 0,
+      "hp_cost": 3,
+      "description": "Sacrifice your own blood to etch a powerful rune. Blood Runes detonate for combined Strength and Willpower modifier damage each.",
+      "ai_instruction": "Deduct 3 HP from actor (no attack roll, self inflicted). Apply one Blood Rune status to actor. Duration 10 rounds, persists false. Each Blood Rune detonates on next physical hit dealing +(Strength modifier + Willpower modifier) magic damage. All Blood Runes detonate simultaneously and are consumed on hit. Call apply_damage on actor for 3 HP cost, then call apply_status with effect='blood_rune', duration=10, persists=false."
+    },
+    {
+      "id": "hemorrhage",
+      "name": "Hemorrhage",
+      "level_required": 2,
+      "ap_cost": 2,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "A vicious strike that causes deep bleeding wounds.",
+      "ai_instruction": "Make physical attack roll (1d20 + Strength modifier) vs target AC. On hit deal weapon dice + Strength modifier damage. Apply Bleeding to target — deals 1d4 + Strength modifier damage each round. Persists true (survives end of combat until cured). Call apply_damage for hit damage then apply_status with effect='bleeding', duration=99, persists=true. On crit: max weapon die + roll + modifier, and Bleeding initial application deals max 1d4 + Strength modifier immediately."
+    },
+    {
+      "id": "crimson_surge",
+      "name": "Crimson Surge",
+      "level_required": 3,
+      "ap_cost": 1,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Sacrifice half your current HP to empower your next attack this turn to deal double damage.",
+      "ai_instruction": "Calculate half of actor's current HP (round down, minimum 1). Deduct that amount from actor HP via apply_damage on self. Apply Crimson Surge status to actor (duration 1, persists false). Next attack this turn deals double damage — roll normally then double the full damage result before calling apply_damage on target. Consume Crimson Surge after the empowered attack."
+    }
+  ]
+}

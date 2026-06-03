@@ -1,0 +1,9 @@
+{
+  "id": "born_of_shadow",
+  "name": "Born of Shadow",
+  "type": "driving",
+  "domain": "magical",
+  "description": "You emerged from darkness and shadow clings to you, sharpening your instincts.",
+  "effect": "+5 Alacrity at character creation.",
+  "ai_instruction": "Add 5 to character Alacrity during character creation. Narrate as a quicksilver mind born from shadow — thoughts that move faster than others, instincts honed in darkness."
+}

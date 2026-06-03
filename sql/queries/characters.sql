@@ -37,9 +37,10 @@ SET name = $1,
     updated_at = NOW(),
     max_ap = $20,
     overcap_ap = $21,
-    action_points = $22
+    action_points = $22,
+    equipped_slots = $23
 
-WHERE id = $23
+WHERE id = $24
 RETURNING *;
 
 -- name: DeleteCharacter :exec

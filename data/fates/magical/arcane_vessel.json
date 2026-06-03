@@ -1,0 +1,9 @@
+{
+  "id": "arcane_vessel",
+  "name": "Arcane Vessel",
+  "type": "driving",
+  "domain": "magical",
+  "description": "Your body is a natural conduit for magical energy, holding more than most could bear.",
+  "effect": "+5 Willpower at character creation.",
+  "ai_instruction": "Add 5 to character Willpower during character creation. Narrate as an innate magical capacity — a deeper well of power, spells that feel natural rather than learned."
+}

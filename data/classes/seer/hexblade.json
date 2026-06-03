@@ -1,0 +1,57 @@
+{
+  "class": "Seer",
+  "branch": "hexblade",
+  "description": "Affliction stacking, enemy locking, and devastating detonations. Manifests a bound Soul Blade that strikes freely whenever a curse lands. Rewards Willpower, Wisdom, and Strength investment.",
+  "skills": [
+    {
+      "id": "soul_blade",
+      "name": "Soul Blade",
+      "level_required": 1,
+      "ap_cost": 0,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Passive. You manifest a bound spiritual weapon that takes the form of any one-handed weapon. Whenever you apply an affliction to any target you immediately make a free Soul Blade attack against them.",
+      "ai_instruction": "Passive skill. Actor permanently has a Soul Blade — a 1d6 damage one-handed weapon that uses Strength modifier for attack and damage rolls. Whenever actor successfully applies any affliction status to any target (Wither, Frail, Ill Wind spread, any curse) immediately make a free Soul Blade attack against that target at 0 AP cost: roll 1d20 + Strength modifier vs target AC, on hit deal 1d6 + Strength modifier damage. Call apply_damage for each Soul Blade proc. If Ill Wind spreads to multiple targets trigger Soul Blade once per target. On crit Soul Blade: max 1d6 + roll + Strength modifier."
+    },
+    {
+      "id": "wither",
+      "name": "Wither",
+      "level_required": 1,
+      "ap_cost": 0,
+      "wp_cost": 2,
+      "hp_cost": 0,
+      "description": "Curse a target with spiritual decay, reducing their damage output. Triggers Soul Blade.",
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target magic defense. On hit apply Withered status — reduces target's damage rolls by Willpower modifier for 3 rounds. If already Withered refresh duration instead of stacking. Call apply_status with effect='withered', duration=3, persists=false. Then trigger Soul Blade passive attack against target. Narrate the curse of decay settling over the target."
+    },
+    {
+      "id": "curse_of_frailty",
+      "name": "Curse of Frailty",
+      "level_required": 2,
+      "ap_cost": 1,
+      "wp_cost": 3,
+      "hp_cost": 0,
+      "description": "Hex a target with spiritual frailty, reducing their defenses and making everything hit harder. Triggers Soul Blade.",
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target magic defense. On hit apply Frail status — reduces target AC by Wisdom modifier for 3 rounds. Call apply_status with effect='frail', duration=3, persists=false. Then trigger Soul Blade passive attack against target. Narrate the target's spiritual armor crumbling."
+    },
+    {
+      "id": "ill_wind",
+      "name": "Ill Wind",
+      "level_required": 2,
+      "ap_cost": 2,
+      "wp_cost": 4,
+      "hp_cost": 0,
+      "description": "Send a cursed wind spreading all afflictions from one target to another at half duration. Triggers Soul Blade for each target afflictions spread to.",
+      "ai_instruction": "Choose a source target with active afflictions and a destination target. Copy all affliction statuses from source to destination at half duration (round down, minimum 1). Call apply_status for each copied affliction on destination target. Then trigger Soul Blade passive attack once per destination target that received afflictions. Narrate dark wind carrying curses between enemies. If no afflictions on source target call action_failed with reason 'No afflictions to spread.'"
+    },
+    {
+      "id": "consume_the_pain",
+      "name": "Consume the Pain",
+      "level_required": 3,
+      "ap_cost": 2,
+      "wp_cost": 5,
+      "hp_cost": 0,
+      "description": "Plunge your Soul Blade into a target, detonating all afflictions in a catastrophic burst. More curses stacked means more devastation.",
+      "ai_instruction": "Requires Soul Blade. Make Soul Blade attack roll (1d20 + Strength modifier) vs target AC. On hit count all active affliction stacks on target (Withered, Frail, Sickened, Ill Omen, any other curse/hex). Deal 1d12 per affliction stack + Strength modifier total damage. Consume all afflictions on target after. Call apply_damage with total. If no afflictions on target deal normal 1d6 + Strength modifier Soul Blade damage only. On crit: max 1d12 per stack + roll per stack + Strength modifier. Narrate as the ultimate expression of hexblade mastery — all suffering unleashed at once."
+    }
+  ]
+}

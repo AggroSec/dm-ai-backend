@@ -1,0 +1,67 @@
+{
+  "class": "Runeblade",
+  "branch": "base",
+  "description": "The core Runeblade identity — combining arcane power with physical combat through Etched Runes.",
+  "skills": [
+    {
+      "id": "etch_rune",
+      "name": "Etch Rune",
+      "level_required": 1,
+      "ap_cost": 0,
+      "wp_cost": 2,
+      "hp_cost": 0,
+      "description": "Sketch a rune in the air, applying one Etched Rune buff to yourself. On your next physical hit all Etched Runes detonate dealing bonus magic damage each, then are consumed.",
+      "ai_instruction": "Apply one Etched Rune status to actor. Duration 10 rounds, persists false. Each Etched Rune adds +(Willpower modifier) magic damage to the next physical attack. All Etched Runes detonate simultaneously on hit and are consumed. Call apply_status with effect='etched_rune', duration=10, persists=false."
+    },
+    {
+      "id": "runic_strike",
+      "name": "Runic Strike",
+      "level_required": 1,
+      "ap_cost": 2,
+      "wp_cost": 3,
+      "hp_cost": 0,
+      "description": "A powerful strike infused with arcane energy, dealing both physical and magic damage.",
+      "ai_instruction": "Make a physical attack roll (1d20 + Strength modifier) vs target AC. On hit deal weapon dice + Strength modifier physical damage. Additionally deal 1d10 + Willpower modifier magic damage (1d20 + Willpower modifier vs magic defense). Call apply_damage for combined total. On crit either component: max die + roll + modifier for that component."
+    },
+    {
+      "id": "arcane_parry",
+      "name": "Arcane Parry",
+      "level_required": 1,
+      "ap_cost": 1,
+      "wp_cost": 3,
+      "hp_cost": 0,
+      "description": "Channel arcane energy into a defensive ward, adding your Willpower modifier to AC until the start of your next turn.",
+      "ai_instruction": "Apply Arcane Parry status to actor. Adds Willpower modifier to AC until start of actor's next turn. Call apply_status with effect='arcane_parry', duration=1, persists=false."
+    },
+    {
+      "id": "runic_empowerment",
+      "name": "Runic Empowerment",
+      "level_required": 2,
+      "ap_cost": 0,
+      "wp_cost": 2,
+      "hp_cost": 0,
+      "description": "Your Etch Rune now applies Enhanced Runes that also bolster your defenses until detonated.",
+      "ai_instruction": "Apply one Enhanced Rune status to actor instead of a basic Etched Rune. Duration 10 rounds, persists false. Enhanced Rune adds +(Willpower modifier) magic damage to next physical hit AND adds Willpower modifier to AC until detonated. All Enhanced Runes detonate on hit and are consumed. Call apply_status with effect='enhanced_rune', duration=10, persists=false."
+    },
+    {
+      "id": "arcane_momentum",
+      "name": "Arcane Momentum",
+      "level_required": 3,
+      "ap_cost": 0,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Passive. After detonating runes this turn your next attack costs 1 less AP. Once per turn.",
+      "ai_instruction": "Passive skill. After actor detonates any runes this turn, apply Arcane Momentum status (duration 1, persists false). While Arcane Momentum is active reduce AP cost of actor's next attack by 1 (minimum 0). Consume Arcane Momentum after the discounted attack. Once per turn only."
+    },
+    {
+      "id": "runic_overload",
+      "name": "Runic Overload",
+      "level_required": 4,
+      "ap_cost": 2,
+      "wp_cost": 4,
+      "hp_cost": 0,
+      "description": "Detonate all current runes as a burst of pure magic energy without needing a physical attack. Guaranteed hit.",
+      "ai_instruction": "No attack roll needed. Count all Etched Rune and Enhanced Rune stacks on actor. Deal (Willpower modifier) magic damage per rune stack as a guaranteed hit. Call apply_damage with total damage. Consume all rune stacks after. If no runes are stacked the skill fizzles — narrate the attempt with no damage."
+    }
+  ]
+}

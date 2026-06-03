@@ -1,0 +1,9 @@
+{
+  "id": "ironborn",
+  "name": "Ironborn",
+  "type": "driving",
+  "domain": "physical",
+  "description": "Your body is unnaturally resilient, having endured hardships that would break others.",
+  "effect": "+5 Fortitude at character creation.",
+  "ai_instruction": "Add 5 to character Fortitude during character creation. Narrate as a toughness earned through hardship — scars that tell stories, a constitution that refuses to quit."
+}

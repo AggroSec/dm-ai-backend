@@ -1,0 +1,9 @@
+{
+  "id": "torn_between_worlds",
+  "name": "Torn Between Worlds",
+  "type": "binding",
+  "domain": "hybrid",
+  "description": "Your dual nature pulls you in two directions, making mastery of either path harder.",
+  "effect": "-2 Strength and -2 Willpower at character creation.",
+  "ai_instruction": "Subtract 2 from character Strength and 2 from character Willpower during character creation. Narrate as an internal conflict — the physical and spiritual selves at odds, each undermining the other."
+}

@@ -13,9 +13,9 @@ import (
 
 const addStatusEffect = `-- name: AddStatusEffect :one
 
-INSERT INTO status_effects (character_id, effect, duration, persists)
-values ($1, $2, $3, $4)
-returning id, character_id, effect, duration, is_active, persists, created_at, updated_at
+INSERT INTO status_effects (character_id, effect, duration, persists, instruction)
+values ($1, $2, $3, $4, $5)
+returning id, character_id, effect, duration, is_active, persists, created_at, updated_at, instruction
 `
 
 type AddStatusEffectParams struct {
@@ -23,6 +23,7 @@ type AddStatusEffectParams struct {
 	Effect      string
 	Duration    int32
 	Persists    bool
+	Instruction string
 }
 
 func (q *Queries) AddStatusEffect(ctx context.Context, arg AddStatusEffectParams) (StatusEffect, error) {
@@ -31,6 +32,7 @@ func (q *Queries) AddStatusEffect(ctx context.Context, arg AddStatusEffectParams
 		arg.Effect,
 		arg.Duration,
 		arg.Persists,
+		arg.Instruction,
 	)
 	var i StatusEffect
 	err := row.Scan(
@@ -42,13 +44,14 @@ func (q *Queries) AddStatusEffect(ctx context.Context, arg AddStatusEffectParams
 		&i.Persists,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Instruction,
 	)
 	return i, err
 }
 
 const getStatusEffectsByID = `-- name: GetStatusEffectsByID :many
 
-SELECT id, character_id, effect, duration, is_active, persists, created_at, updated_at FROM status_effects WHERE character_id = $1 and is_active = TRUE
+SELECT id, character_id, effect, duration, is_active, persists, created_at, updated_at, instruction FROM status_effects WHERE character_id = $1 and is_active = TRUE
 `
 
 func (q *Queries) GetStatusEffectsByID(ctx context.Context, characterID uuid.UUID) ([]StatusEffect, error) {
@@ -69,6 +72,7 @@ func (q *Queries) GetStatusEffectsByID(ctx context.Context, characterID uuid.UUI
 			&i.Persists,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Instruction,
 		); err != nil {
 			return nil, err
 		}
@@ -112,7 +116,7 @@ SET duration = $3,
     updated_at = NOW(),
     is_active = $4
 where id = $1 and character_id = $2
-returning id, character_id, effect, duration, is_active, persists, created_at, updated_at
+returning id, character_id, effect, duration, is_active, persists, created_at, updated_at, instruction
 `
 
 type UpdateStatusDurationParams struct {
@@ -139,6 +143,7 @@ func (q *Queries) UpdateStatusDuration(ctx context.Context, arg UpdateStatusDura
 		&i.Persists,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Instruction,
 	)
 	return i, err
 }

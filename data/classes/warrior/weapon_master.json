@@ -1,0 +1,37 @@
+{
+  "class": "Warrior",
+  "branch": "weapon_master",
+  "description": "Deep specialization in one weapon type. Slower and less flexible than Walking Armory but hits significantly harder when conditions are right.",
+  "skills": [
+    {
+      "id": "weapon_focus",
+      "name": "Weapon Focus",
+      "level_required": 1,
+      "ap_cost": 0,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Passive. Choose a weapon type permanently (blade, blunt, polearm, ranged). Attacks with your chosen type build Focused stacks increasing crit range. 1 stack: 19-20, 2 stacks: 18-20, 3 stacks: 17-20.",
+      "ai_instruction": "Passive skill. Actor chooses weapon type permanently at acquisition — store as 'weapon_focus_type' in their status or character context. Each hit with the chosen weapon type applies one Focused stack (max 3, expire end of turn). Crit range: 0 stacks=20, 1 stack=19-20, 2 stacks=18-20, 3 stacks=17-20. Base crit rule applies: max die + roll + modifier. Narrate growing mastery with the chosen weapon type."
+    },
+    {
+      "id": "exploit_weakness",
+      "name": "Exploit Weakness",
+      "level_required": 2,
+      "ap_cost": 2,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Study your target and find the gaps in their defense. All damage from your chosen weapon type hits harder for 3 rounds.",
+      "ai_instruction": "Requires chosen weapon type from Weapon Focus. Apply Vulnerable status to target — increases all damage taken from actor's chosen weapon type by Strength modifier for 3 rounds. Call apply_status with effect='vulnerable', duration=3, persists=false. Narrate the warrior reading the target's fighting style and finding weaknesses. When calculating damage from chosen weapon attacks against Vulnerable target add Strength modifier to damage total."
+    },
+    {
+      "id": "masterful_strike",
+      "name": "Masterful Strike",
+      "level_required": 3,
+      "ap_cost": 3,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "The ultimate expression of weapon mastery. An automatic critical hit with your chosen weapon type.",
+      "ai_instruction": "Requires chosen weapon type from Weapon Focus and chosen weapon equipped. No attack roll needed — automatically hits and counts as a critical hit. Deal max weapon die + weapon die roll + Strength modifier damage. If target has Vulnerable active add Strength modifier again to total. Call apply_damage with total. Narrate as the definitive strike of a true master — years of practice culminating in a single perfect blow."
+    }
+  ]
+}

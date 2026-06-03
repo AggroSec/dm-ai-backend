@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type CombatStatus string
@@ -91,6 +92,7 @@ type Character struct {
 	UpdatedAt             time.Time
 	MaxAp                 int32
 	OvercapAp             int32
+	EquippedSlots         pqtype.NullRawMessage
 }
 
 type CombatSession struct {
@@ -114,6 +116,7 @@ type StatusEffect struct {
 	Persists    bool
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	Instruction string
 }
 
 type User struct {

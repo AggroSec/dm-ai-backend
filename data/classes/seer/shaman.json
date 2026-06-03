@@ -1,0 +1,57 @@
+{
+  "class": "Seer",
+  "branch": "shaman",
+  "description": "Elemental offensive power channeled through spiritual communion. Call fire, frost, and lightning to devastate enemies. High damage, area potential.",
+  "skills": [
+    {
+      "id": "ember_strike",
+      "name": "Ember Strike",
+      "level_required": 1,
+      "ap_cost": 0,
+      "wp_cost": 3,
+      "hp_cost": 0,
+      "description": "Hurl a shard of spiritual fire. Applies Burning on hit. If target is already Burning extends duration instead of reapplying.",
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target magic defense. On hit deal 1d8 + Willpower modifier fire magic damage. Check if target has Burning status: if not Burning apply Burning (1d4 + Willpower modifier fire damage per round, duration 3, persists false). If already Burning extend duration by 1 instead of reapplying. Call apply_damage then apply_status or extend duration. On crit: max 1d8 + roll + Willpower modifier, and if applying Burning for first time deal max 1d4 + Willpower modifier immediately."
+    },
+    {
+      "id": "frost_lance",
+      "name": "Frost Lance",
+      "level_required": 1,
+      "ap_cost": 2,
+      "wp_cost": 4,
+      "hp_cost": 0,
+      "description": "Hurl a lance of spiritual ice that chills the target, reducing their action economy.",
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target magic defense. On hit deal 1d10 + Willpower modifier ice magic damage. Apply Chilled to target — reduces their AP by 2 for 2 rounds. Does not stack — if already Chilled refresh duration only. Call apply_damage then apply_status with effect='chilled', duration=2, persists=false. On crit: max 1d10 + roll + Willpower modifier."
+    },
+    {
+      "id": "chain_lightning_seer",
+      "name": "Chain Lightning",
+      "level_required": 2,
+      "ap_cost": 2,
+      "wp_cost": 4,
+      "hp_cost": 0,
+      "description": "Call down spiritual lightning that strikes a primary target and arcs to a second.",
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs primary target magic defense. On hit deal 1d10 + Willpower modifier lightning magic damage to primary target. Then arc to second alive enemy target — no additional roll, deal 1d6 + Willpower modifier lightning damage to secondary target. Call apply_damage twice. On crit primary: max 1d10 + roll + Willpower modifier."
+    },
+    {
+      "id": "spirit_surge",
+      "name": "Spirit Surge",
+      "level_required": 2,
+      "ap_cost": 0,
+      "wp_cost": 5,
+      "hp_cost": 0,
+      "description": "Call upon spiritual power to empower your next magic attack this turn with an additional burst of energy.",
+      "ai_instruction": "Apply Spirit Surge status to actor. Next magic attack this turn adds an extra 1d10 to the damage roll. Consumed after the empowered attack. Once per turn. Call apply_status with effect='spirit_surge', duration=1, persists=false. Narrate spiritual energy crackling around the Seer's hands."
+    },
+    {
+      "id": "elemental_convergence",
+      "name": "Elemental Convergence",
+      "level_required": 3,
+      "ap_cost": 3,
+      "wp_cost": 6,
+      "hp_cost": 0,
+      "description": "Unleash all elements simultaneously against every enemy. Consumes active elemental DoTs for massive bonus damage.",
+      "ai_instruction": "For each alive enemy target: make magic attack roll (1d20 + Willpower modifier) vs their magic defense. On hit deal 1d10 + Willpower modifier magic damage. Check if target has any elemental DoT (Burning, Chilled, or any other elemental status) — if so consume it and deal additional 2d10 magic damage to that target. Call apply_damage for each target separately. On crit against any target: max 1d10 + roll + Willpower modifier for base damage before bonus. Narrate as a cataclysmic convergence of fire, ice, and lightning."
+    }
+  ]
+}

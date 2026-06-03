@@ -1,0 +1,97 @@
+{
+  "class": "Seer",
+  "branch": "base",
+  "description": "A spiritual oracle who walks between worlds. Reads the battlefield, protects allies, debuffs enemies, and deals consistent magic damage. More skills per level to compensate for lower physical defense.",
+  "skills": [
+    {
+      "id": "ill_omen",
+      "name": "Ill Omen",
+      "level_required": 1,
+      "ap_cost": 0,
+      "wp_cost": 2,
+      "hp_cost": 0,
+      "description": "Place a spiritual curse on a target, clouding their next action with misfortune.",
+      "ai_instruction": "Apply Ill Omen status to target. Reduces target's next attack roll by Wisdom modifier. Duration 2 rounds, persists false. Call apply_status with effect='ill_omen', duration=2, persists=false. Narrate as a dark omen hanging over the target."
+    },
+    {
+      "id": "spirit_bolt",
+      "name": "Spirit Bolt",
+      "level_required": 1,
+      "ap_cost": 1,
+      "wp_cost": 3,
+      "hp_cost": 0,
+      "description": "Hurl a bolt of pure spiritual energy at a target.",
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target magic defense. On hit deal 1d10 + Willpower modifier magic damage. Call apply_damage on hit. On crit: max 1d10 + roll + Willpower modifier."
+    },
+    {
+      "id": "ward",
+      "name": "Ward",
+      "level_required": 1,
+      "ap_cost": 1,
+      "wp_cost": 2,
+      "hp_cost": 0,
+      "description": "Place a protective ward on yourself or an ally that reduces the next instance of damage taken.",
+      "ai_instruction": "Apply Ward status to target (self or ally). Reduces next instance of damage taken by Wisdom modifier. Consumed on hit. Call apply_status with effect='ward', duration=3, persists=false. When Ward is active and target takes damage subtract Wisdom modifier from damage before applying, then consume Ward."
+    },
+    {
+      "id": "sickening_hex",
+      "name": "Sickening Hex",
+      "level_required": 1,
+      "ap_cost": 0,
+      "wp_cost": 3,
+      "hp_cost": 0,
+      "description": "Curse a target with a sickening spiritual affliction that deals damage over time.",
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target magic defense to land the hex. On hit apply Sickened status — deals 1d4 + Willpower modifier magic damage each round for 5 rounds, persists false. Call apply_status with effect='sickened', duration=5, persists=false. On crit application: immediately deal max 1d4 + Willpower modifier damage on landing, then normal ticks proceed."
+    },
+    {
+      "id": "dark_insight",
+      "name": "Dark Insight",
+      "level_required": 2,
+      "ap_cost": 1,
+      "wp_cost": 2,
+      "hp_cost": 0,
+      "description": "Read the spiritual aura of a target, revealing their afflictions, weaknesses, and current state.",
+      "ai_instruction": "No attack roll needed. Read target's current status effects, HP, AP, stats from combat session context. Narrate what the Seer perceives — active afflictions, how wounded they are, any magical auras. This is an information skill. Do not call apply_damage or apply_status. Simply describe what is revealed in rich detail to help the player make strategic decisions."
+    },
+    {
+      "id": "spirit_shield",
+      "name": "Spirit Shield",
+      "level_required": 2,
+      "ap_cost": 1,
+      "wp_cost": 3,
+      "hp_cost": 0,
+      "description": "Summon a spiritual barrier around yourself or an ally that absorbs damage.",
+      "ai_instruction": "Roll 1d6 + Willpower modifier to determine barrier strength. Apply Spirit Shield status to target (self or ally) with that value as the shield HP. Incoming damage hits the shield first — subtract from shield HP before applying to target HP. When shield HP reaches 0 consume Spirit Shield. Call apply_status with effect='spirit_shield', duration=5, persists=false. Track shield HP value in the status effect."
+    },
+    {
+      "id": "foresight",
+      "name": "Foresight",
+      "level_required": 3,
+      "ap_cost": 1,
+      "wp_cost": 3,
+      "hp_cost": 0,
+      "description": "You have seen this moment before. The next attack against the warded target automatically misses.",
+      "ai_instruction": "Apply Foresight status to target (self or ally). The next attack targeting them automatically misses regardless of roll. Consumed on trigger. Call apply_status with effect='foresight', duration=3, persists=false. When an attack targets a Foresight-warded entity narrate the Seer having foreseen this exact moment — the attack passes through empty air."
+    },
+    {
+      "id": "soul_drain",
+      "name": "Soul Drain",
+      "level_required": 3,
+      "ap_cost": 2,
+      "wp_cost": 4,
+      "hp_cost": 0,
+      "description": "Drain the life force from a target, dealing magic damage and healing yourself for half the amount.",
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target magic defense. On hit deal 1d10 + Willpower modifier magic damage. Heal actor for half the damage dealt (round down). Call apply_damage on target then restore that HP amount divided by 2 to actor. On crit: max 1d10 + roll + Willpower modifier, heal half of crit total."
+    },
+    {
+      "id": "omen_of_doom",
+      "name": "Omen of Doom",
+      "level_required": 4,
+      "ap_cost": 1,
+      "wp_cost": 3,
+      "hp_cost": 0,
+      "description": "You have read the threads of fate and seen this target's doom. The next attack that hits them is guaranteed to critically strike.",
+      "ai_instruction": "Apply Doomed status to target. The next attack that hits them automatically counts as a critical hit regardless of roll. Apply crit damage rules: max die + roll + modifier. Consumed on trigger. Call apply_status with effect='doomed', duration=3, persists=false. Narrate as the Seer seeing the exact moment of the target's undoing written in the stars."
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "fraying_mind",
+  "name": "Fraying Mind",
+  "type": "binding",
+  "domain": "magical",
+  "description": "The magical energies you channel take a toll on your mental fortitude.",
+  "effect": "-4 Alacrity at character creation.",
+  "ai_instruction": "Subtract 4 from character Alacrity during character creation. Narrate as a mind stretched thin by magical power — slower to react, thoughts that sometimes slip away mid-battle."
+}

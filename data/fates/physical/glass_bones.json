@@ -1,0 +1,9 @@
+{
+  "id": "glass_bones",
+  "name": "Glass Bones",
+  "type": "binding",
+  "domain": "physical",
+  "description": "Your frame is deceptively fragile — a single hard blow can shatter what others would shrug off.",
+  "effect": "-4 Fortitude at character creation.",
+  "ai_instruction": "Subtract 4 from character Fortitude during character creation. Narrate as a physical limitation — not weakness of will but of body, constantly struggling to endure what others take in stride, a vulnerability that shapes how the character approaches physical challenges."
+}

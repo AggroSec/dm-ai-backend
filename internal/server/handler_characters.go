@@ -8,6 +8,7 @@ import (
 
 	"github.com/AggroSec/dm-ai-backend/internal/database"
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type characterResponse struct {
@@ -36,6 +37,7 @@ type characterResponse struct {
 	TalentPointsAvailable int32           `json:"talent_points_available"`
 	TalentsInvested       json.RawMessage `json:"talents_invested"`
 	Inventory             json.RawMessage `json:"inventory"`
+	EquippedSlots         json.RawMessage `json:"equipped_slots"`
 	//StatusEffects         json.RawMessage `json:"status_effects"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -180,6 +182,7 @@ func (s *Server) handlerUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		ActionPoints:          character.ActionPoints,
 		MaxAp:                 character.MaxAp,
 		OvercapAp:             character.OvercapAp,
+		EquippedSlots:         character.EquippedSlots,
 	})
 	if err != nil {
 		respondError(w, http.StatusInternalServerError, "failed to update character")
@@ -221,6 +224,10 @@ func (s *Server) handlerDeleteCharacter(w http.ResponseWriter, r *http.Request) 
 }
 
 func dbCharacterToResponse(c database.Character) characterResponse {
+	var equippedSlots json.RawMessage
+	if c.EquippedSlots.Valid {
+		equippedSlots = c.EquippedSlots.RawMessage
+	}
 	return characterResponse{
 		ID:                    c.ID.String(),
 		UserID:                c.UserID.String(),
@@ -247,6 +254,7 @@ func dbCharacterToResponse(c database.Character) characterResponse {
 		TalentPointsAvailable: c.TalentPointsAvailable,
 		TalentsInvested:       c.TalentsInvested,
 		Inventory:             c.Inventory,
+		EquippedSlots:         equippedSlots,
 		//StatusEffects:         c.StatusEffects,
 		UpdatedAt: c.UpdatedAt,
 	}
@@ -275,6 +283,7 @@ type updateCharacterRequest struct {
 	TalentPointsAvailable *int32          `json:"talent_points_available"`
 	TalentsInvested       json.RawMessage `json:"talents_invested"`
 	Inventory             json.RawMessage `json:"inventory"`
+	EquippedSlots         json.RawMessage `json:"equipped_slots"`
 }
 
 func applyCharacterUpdates(c *database.Character, req updateCharacterRequest) {
@@ -343,5 +352,8 @@ func applyCharacterUpdates(c *database.Character, req updateCharacterRequest) {
 	}
 	if req.Inventory != nil {
 		c.Inventory = req.Inventory
+	}
+	if req.EquippedSlots != nil {
+		c.EquippedSlots = pqtype.NullRawMessage{RawMessage: req.EquippedSlots, Valid: true}
 	}
 }

@@ -1,0 +1,9 @@
+{
+  "id": "shunned_by_light",
+  "name": "Shunned by Light",
+  "type": "binding",
+  "domain": "magical",
+  "description": "Spiritual light recoils from your presence, leaving you vulnerable to its power.",
+  "effect": "-4 Wisdom at character creation.",
+  "ai_instruction": "Subtract 4 from character Wisdom during character creation. Narrate as a spiritual blindness — an inability to read magical auras clearly, a vulnerability to holy or light-based magic."
+}

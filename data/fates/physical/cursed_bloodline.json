@@ -1,0 +1,9 @@
+{
+  "id": "cursed_bloodline",
+  "name": "Cursed Bloodline",
+  "type": "binding",
+  "domain": "physical",
+  "description": "Your blood carries an ancient curse that saps your strength.",
+  "effect": "-4 Strength at character creation.",
+  "ai_instruction": "Subtract 4 from character Strength during character creation. Narrate as a weakness in the bloodline — attacks that seem never quite strong enough, a body that tires more easily."
+}

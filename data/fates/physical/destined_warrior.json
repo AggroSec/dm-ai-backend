@@ -1,0 +1,9 @@
+{
+  "id": "destined_warrior",
+  "name": "Destined Warrior",
+  "type": "driving",
+  "domain": "physical",
+  "description": "You were born to fight. Your body is a weapon honed by destiny itself.",
+  "effect": "+5 Strength at character creation.",
+  "ai_instruction": "Add 5 to character Strength during character creation. Narrate as an innate physical power the character has always possessed."
+}

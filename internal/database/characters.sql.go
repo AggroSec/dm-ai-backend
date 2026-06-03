@@ -10,13 +10,14 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 const createCharacter = `-- name: CreateCharacter :one
 
 INSERT INTO characters (name, class, user_id)
 values ($1, $2, $3)
-returning id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap
+returning id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap, equipped_slots
 `
 
 type CreateCharacterParams struct {
@@ -56,6 +57,7 @@ func (q *Queries) CreateCharacter(ctx context.Context, arg CreateCharacterParams
 		&i.UpdatedAt,
 		&i.MaxAp,
 		&i.OvercapAp,
+		&i.EquippedSlots,
 	)
 	return i, err
 }
@@ -77,7 +79,7 @@ func (q *Queries) DeleteCharacter(ctx context.Context, arg DeleteCharacterParams
 
 const getCharacterByID = `-- name: GetCharacterByID :one
 
-select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap from characters where id = $1
+select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap, equipped_slots from characters where id = $1
 `
 
 func (q *Queries) GetCharacterByID(ctx context.Context, id uuid.UUID) (Character, error) {
@@ -111,13 +113,14 @@ func (q *Queries) GetCharacterByID(ctx context.Context, id uuid.UUID) (Character
 		&i.UpdatedAt,
 		&i.MaxAp,
 		&i.OvercapAp,
+		&i.EquippedSlots,
 	)
 	return i, err
 }
 
 const getCharacterByUserID = `-- name: GetCharacterByUserID :many
 
-select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap from characters where user_id = $1
+select id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap, equipped_slots from characters where user_id = $1
 `
 
 func (q *Queries) GetCharacterByUserID(ctx context.Context, userID uuid.UUID) ([]Character, error) {
@@ -157,6 +160,7 @@ func (q *Queries) GetCharacterByUserID(ctx context.Context, userID uuid.UUID) ([
 			&i.UpdatedAt,
 			&i.MaxAp,
 			&i.OvercapAp,
+			&i.EquippedSlots,
 		); err != nil {
 			return nil, err
 		}
@@ -196,10 +200,11 @@ SET name = $1,
     updated_at = NOW(),
     max_ap = $20,
     overcap_ap = $21,
-    action_points = $22
+    action_points = $22,
+    equipped_slots = $23
 
-WHERE id = $23
-RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap
+WHERE id = $24
+RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap, equipped_slots
 `
 
 type UpdateCharacterParams struct {
@@ -225,6 +230,7 @@ type UpdateCharacterParams struct {
 	MaxAp                 int32
 	OvercapAp             int32
 	ActionPoints          int32
+	EquippedSlots         pqtype.NullRawMessage
 	ID                    uuid.UUID
 }
 
@@ -252,6 +258,7 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		arg.MaxAp,
 		arg.OvercapAp,
 		arg.ActionPoints,
+		arg.EquippedSlots,
 		arg.ID,
 	)
 	var i Character
@@ -283,6 +290,7 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 		&i.UpdatedAt,
 		&i.MaxAp,
 		&i.OvercapAp,
+		&i.EquippedSlots,
 	)
 	return i, err
 }
@@ -313,4 +321,20 @@ type UpdateCharacterWPParams struct {
 func (q *Queries) UpdateCharacterWP(ctx context.Context, arg UpdateCharacterWPParams) error {
 	_, err := q.db.ExecContext(ctx, updateCharacterWP, arg.ID, arg.CurrentWp)
 	return err
+}
+
+const validateCharacterOwnership = `-- name: ValidateCharacterOwnership :one
+SELECT id FROM characters WHERE id = $1 AND user_id = $2
+`
+
+type ValidateCharacterOwnershipParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+func (q *Queries) ValidateCharacterOwnership(ctx context.Context, arg ValidateCharacterOwnershipParams) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, validateCharacterOwnership, arg.ID, arg.UserID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }

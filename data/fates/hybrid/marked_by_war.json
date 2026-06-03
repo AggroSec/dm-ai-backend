@@ -1,0 +1,9 @@
+{
+  "id": "marked_by_war",
+  "name": "Marked by War",
+  "type": "driving",
+  "domain": "hybrid",
+  "description": "Combat has left its mark on you in ways both physical and spiritual — you are at your best when the fighting is fiercest.",
+  "effect": "+4 Strength and +4 Fortitude at character creation.",
+  "ai_instruction": "Add 4 to character Strength and 4 to character Fortitude during character creation. Narrate as a warrior's body and spirit forged by conflict — most alive in the heat of battle."
+}

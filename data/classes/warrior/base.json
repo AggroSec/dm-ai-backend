@@ -1,0 +1,67 @@
+{
+  "class": "Warrior",
+  "branch": "base",
+  "description": "The pure physical fighter. Hit hard, take punishment, outlast everything.",
+  "skills": [
+    {
+      "id": "power_strike",
+      "name": "Power Strike",
+      "level_required": 1,
+      "ap_cost": 2,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "A devastating heavy physical attack that hits harder than a basic strike.",
+      "ai_instruction": "Make physical attack roll (1d20 + Strength modifier) vs target AC. On hit deal weapon dice + Strength modifier + Strength modifier damage (double Strength modifier bonus). Call apply_damage with total. On crit: max weapon die + roll + double Strength modifier."
+    },
+    {
+      "id": "defensive_stance",
+      "name": "Defensive Stance",
+      "level_required": 1,
+      "ap_cost": 1,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Take a defensive posture adding Fortitude modifier to AC until start of next turn, at the cost of 1 AP next turn.",
+      "ai_instruction": "Apply Defensive Stance status to actor. Adds Fortitude modifier to AC until start of actor's next turn. Also apply AP Penalty status (duration 1, persists false) — reduce actor's AP by 1 at the start of their next turn. Call apply_status twice: effect='defensive_stance' duration=1, and effect='ap_penalty' duration=1."
+    },
+    {
+      "id": "adrenaline",
+      "name": "Adrenaline",
+      "level_required": 1,
+      "ap_cost": 2,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Push your body to its absolute limit, restoring AP to maximum. Can only be used once per rest — leaves you Exhausted.",
+      "ai_instruction": "Check if actor has Exhausted status. If Exhausted: call action_failed with reason 'You are too exhausted to push further. You need rest.' If not Exhausted: restore actor AP to their MaxAP value. Apply Exhausted status with duration=9999, persists=true. Narrate the surge of adrenaline. Call apply_status with effect='exhausted', duration=9999, persists=true."
+    },
+    {
+      "id": "toughness",
+      "name": "Toughness",
+      "level_required": 2,
+      "ap_cost": 0,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Passive. Your body has hardened through countless battles. Add Fortitude modifier to all incoming damage reduction permanently.",
+      "ai_instruction": "Passive skill. When calculating incoming damage for this actor subtract their Fortitude modifier from the damage total before applying. This is always active once learned. Narrate as the warrior shrugging off blows that would fell lesser fighters."
+    },
+    {
+      "id": "crushing_blow",
+      "name": "Crushing Blow",
+      "level_required": 3,
+      "ap_cost": 2,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "A precisely aimed strike that shatters your opponent's fighting ability, reducing their damage output.",
+      "ai_instruction": "Make physical attack roll (1d20 + Strength modifier) vs target AC. On hit deal weapon dice + Strength modifier damage. Apply Weakened to target — reduces their damage rolls by Strength modifier for 2 rounds. Call apply_damage then apply_status with effect='weakened', duration=2, persists=false. On crit: max weapon die + roll + modifier, Weakened duration becomes 3 rounds."
+    },
+    {
+      "id": "battle_hardened",
+      "name": "Battle Hardened",
+      "level_required": 4,
+      "ap_cost": 0,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Passive. Years of combat have given you a natural resistance to magic. Reduce all incoming magic damage by Wisdom modifier.",
+      "ai_instruction": "Passive skill. When calculating incoming magic damage for this actor subtract their Wisdom modifier from the damage total before applying. Always active once learned. Stack with Toughness if both are learned — Toughness reduces physical damage, Battle Hardened reduces magic damage."
+    }
+  ]
+}

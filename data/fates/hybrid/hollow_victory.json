@@ -1,0 +1,9 @@
+{
+  "id": "hollow_victory",
+  "name": "Hollow Victory",
+  "type": "binding",
+  "domain": "hybrid",
+  "description": "Every win costs you something. The victories pile up but so does the weight they carry.",
+  "effect": "-2 Alacrity and -2 Wisdom at character creation.",
+  "ai_instruction": "Subtract 2 from character Alacrity and 2 from character Wisdom during character creation. Narrate as the accumulated cost of survival — a mind that second-guesses, instincts dulled by the weight of past battles."
+}

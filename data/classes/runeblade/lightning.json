@@ -1,0 +1,37 @@
+{
+  "class": "Runeblade",
+  "branch": "lightning",
+  "description": "Fast, lightning-charged attacks and quick maneuvers. Trades raw damage for action efficiency and magic defense.",
+  "skills": [
+    {
+      "id": "volt_strike",
+      "name": "Volt Strike",
+      "level_required": 1,
+      "ap_cost": 1,
+      "wp_cost": 1,
+      "hp_cost": 0,
+      "description": "A quick lightning-charged strike. Cheap enough to chain with other actions.",
+      "ai_instruction": "Make a physical attack roll (1d20 + Strength modifier) vs target AC. On hit deal weapon dice + Strength modifier physical damage plus 1d6 flat lightning magic damage. Call apply_damage with combined total. Low cost — can be chained with other skills in the same turn."
+    },
+    {
+      "id": "surge_step",
+      "name": "Surge Step",
+      "level_required": 2,
+      "ap_cost": 1,
+      "wp_cost": 0,
+      "hp_cost": 0,
+      "description": "Move with lightning speed, bolstering your magic defenses for 2 rounds.",
+      "ai_instruction": "Apply Evasive status to actor. Adds Wisdom modifier to magic defense for 2 rounds. Call apply_status with effect='evasive', duration=2, persists=false."
+    },
+    {
+      "id": "chain_lightning_rb",
+      "name": "Chain Lightning",
+      "level_required": 3,
+      "ap_cost": 2,
+      "wp_cost": 4,
+      "hp_cost": 0,
+      "description": "Strike a primary target with lightning that arcs to a second target for reduced damage.",
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs primary target magic defense. On hit deal 1d10 + Willpower modifier lightning damage to primary target. Then arc to second alive target — no additional roll needed, deal 1d6 + Willpower modifier to secondary target. Call apply_damage twice. On crit primary target: max die + roll + modifier."
+    }
+  ]
+}

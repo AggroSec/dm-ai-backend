@@ -1,0 +1,9 @@
+{
+  "id": "thread_walker",
+  "name": "Thread Walker",
+  "type": "driving",
+  "domain": "hybrid",
+  "description": "You move between the physical and spiritual worlds with unnatural ease, your senses sharp in both.",
+  "effect": "+4 Dexterity and +4 Wisdom at character creation.",
+  "ai_instruction": "Add 4 to character Dexterity and 4 to character Wisdom during character creation. Narrate as a dual awareness — the body moves like water while the mind reads the world between worlds."
+}

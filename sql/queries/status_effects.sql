@@ -1,7 +1,7 @@
 -- name: AddStatusEffect :one
 
-INSERT INTO status_effects (character_id, effect, duration, persists)
-values ($1, $2, $3, $4)
+INSERT INTO status_effects (character_id, effect, duration, persists, instruction)
+values ($1, $2, $3, $4, $5)
 returning *;
 
 -- name: GetStatusEffectsByID :many
