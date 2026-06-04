@@ -4,19 +4,22 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/AggroSec/dm-ai-backend/internal/ai"
 	"github.com/AggroSec/dm-ai-backend/internal/config"
 	"github.com/AggroSec/dm-ai-backend/internal/database"
 )
 
 type Server struct {
-	cfg *config.Config
-	db  *database.Queries
+	cfg      *config.Config
+	db       *database.Queries
+	aiClient *ai.Client
 }
 
 func New(cfg *config.Config, db *database.Queries) *Server {
 	return &Server{
-		cfg: cfg,
-		db:  db,
+		cfg:      cfg,
+		db:       db,
+		aiClient: ai.NewClient(*cfg),
 	}
 }
 
@@ -39,6 +42,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	mux.HandleFunc("POST /combat/{id}/turn", s.requireInternal(s.handlerAdvanceTurn))
 	mux.HandleFunc("POST /combat/{id}/action", s.requireInternal(s.handlerTakeAction))
 	mux.HandleFunc("POST /combat/{id}/end", s.requireInternal(s.handlerEndCombat))
+	mux.HandleFunc("POST /ai/test", s.requireInternal(s.handlerAITest))
 	return mux
 }
 

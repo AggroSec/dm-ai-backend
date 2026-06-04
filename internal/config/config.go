@@ -18,6 +18,7 @@ type Config struct {
 	OpenRouterMaxTokens int
 	Port                string
 	AppEnv              string
+	DataDir             string
 }
 
 func LoadConfig() (*Config, error) {
@@ -28,6 +29,7 @@ func LoadConfig() (*Config, error) {
 	cfg.InternalSecret = requireEnv("INTERNAL_SECRET")
 	cfg.OpenRouterAPIKey = requireEnv("OPENROUTER_API_KEY")
 	cfg.OpenRouterModel = requireEnv("OPENROUTER_MODEL")
+	cfg.DataDir = requireEnv("DATA_DIR")
 
 	cfg.Port = getEnvOrDefault("PORT", "8080")
 	cfg.AppEnv = getEnvOrDefault("APP_ENV", "development")
