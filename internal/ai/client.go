@@ -16,14 +16,39 @@ const (
 )
 
 type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string     `json:"role"`
+	Content    string     `json:"content,omitempty"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string     `json:"tool_call_id,omitempty"`
+}
+
+type ToolCall struct {
+	ID       string       `json:"id"`
+	Type     string       `json:"type"`
+	Function ToolFunction `json:"function"`
+}
+
+type ToolFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
+type Function struct {
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Parameters  Parameters `json:"parameters"`
 }
 
 type ChatRequest struct {
 	Model     string    `json:"model"`
 	Messages  []Message `json:"messages"`
 	MaxTokens int       `json:"max_tokens"`
+	Tools     []Tool    `json:"tools,omitempty"`
+}
+
+type Tool struct {
+	Type     string   `json:"type"`
+	Function Function `json:"function"`
 }
 
 type ChatResponse struct {
