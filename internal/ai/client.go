@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/AggroSec/dm-ai-backend/internal/config"
@@ -13,6 +14,7 @@ import (
 
 const (
 	openRouterAPIURL = "https://openrouter.ai/api/v1/chat/completions"
+	maxIterations    = 10
 )
 
 type Message struct {
@@ -130,4 +132,71 @@ func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 	}
 
 	return chatResponse.Choices[0].Message.Content, nil
+}
+
+func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool) (string, error) {
+	messages := msgs
+
+	for i := 0; i < maxIterations; i++ {
+		chatRequest := ChatRequest{
+			Model:     c.Model,
+			Messages:  messages,
+			MaxTokens: c.MaxTokens,
+			Tools:     tools,
+		}
+
+		jsonData, err := json.Marshal(chatRequest)
+		if err != nil {
+			return "", err
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", c.URL, bytes.NewBuffer(jsonData))
+		if err != nil {
+			return "", err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+		req.Header.Set("HTTP-Referer", "http://localhost:8080")
+		req.Header.Set("X-Title", "DM-AI Backend")
+
+		resp, err := c.HTTPClient.Do(req)
+		if err != nil {
+			return "", err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			return "", fmt.Errorf("openrouter returned status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var chatResponse ChatResponse
+		if err := json.NewDecoder(resp.Body).Decode(&chatResponse); err != nil {
+			return "", err
+		}
+
+		resp.Body.Close()
+
+		log.Printf("[DEBUG] finish_reason: %s", chatResponse.Choices[0].FinishReason)
+		log.Printf("[DEBUG] tool_calls: %v", chatResponse.Choices[0].Message.ToolCalls)
+
+		if chatResponse.Choices[0].FinishReason == "stop" {
+			return chatResponse.Choices[0].Message.Content, nil
+		} else if chatResponse.Choices[0].FinishReason == "tool_calls" {
+			testLog := fmt.Sprintf("AI called tool %v with %v parameters", chatResponse.Choices[0].Message.ToolCalls[0].Function.Name, chatResponse.Choices[0].Message.ToolCalls[0].Function.Arguments)
+			logInternalAI(testLog)
+			appendToolMsg := Message{
+				Role:       "tool",
+				ToolCallID: chatResponse.Choices[0].Message.ToolCalls[0].ID,
+				Content:    "6",
+			}
+			messages = append(messages, chatResponse.Choices[0].Message)
+			messages = append(messages, appendToolMsg)
+			continue
+		}
+	}
+	return "", fmt.Errorf("too many AI iterations.")
+}
+
+func logInternalAI(msg string) {
+	log.Printf(" | [InternalAILog] %v", msg)
 }
