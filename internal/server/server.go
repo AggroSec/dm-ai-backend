@@ -19,7 +19,7 @@ func New(cfg *config.Config, db *database.Queries) *Server {
 	return &Server{
 		cfg:      cfg,
 		db:       db,
-		aiClient: ai.NewClient(*cfg),
+		aiClient: ai.NewClient(*cfg, db),
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/AggroSec/dm-ai-backend/internal/config"
+	"github.com/AggroSec/dm-ai-backend/internal/database"
 )
 
 const (
@@ -77,15 +78,17 @@ type Client struct {
 	Model      string
 	MaxTokens  int
 	URL        string
+	db         *database.Queries
 }
 
-func NewClient(cfg config.Config) *Client {
+func NewClient(cfg config.Config, db *database.Queries) *Client {
 	return &Client{
 		HTTPClient: &http.Client{},
 		APIKey:     cfg.OpenRouterAPIKey,
 		Model:      cfg.OpenRouterModel,
 		MaxTokens:  cfg.OpenRouterMaxTokens,
 		URL:        openRouterAPIURL,
+		db:         db,
 	}
 }
 
@@ -176,21 +179,26 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 
 		resp.Body.Close()
 
-		log.Printf("[DEBUG] finish_reason: %s", chatResponse.Choices[0].FinishReason)
-		log.Printf("[DEBUG] tool_calls: %v", chatResponse.Choices[0].Message.ToolCalls)
+		log.Printf(" | [DEBUG] finish_reason: %s", chatResponse.Choices[0].FinishReason)
+		log.Printf(" | [DEBUG] tool_calls: %v", chatResponse.Choices[0].Message.ToolCalls)
 
 		if chatResponse.Choices[0].FinishReason == "stop" {
 			return chatResponse.Choices[0].Message.Content, nil
 		} else if chatResponse.Choices[0].FinishReason == "tool_calls" {
-			testLog := fmt.Sprintf("AI called tool %v with %v parameters", chatResponse.Choices[0].Message.ToolCalls[0].Function.Name, chatResponse.Choices[0].Message.ToolCalls[0].Function.Arguments)
-			logInternalAI(testLog)
-			appendToolMsg := Message{
-				Role:       "tool",
-				ToolCallID: chatResponse.Choices[0].Message.ToolCalls[0].ID,
-				Content:    "6",
-			}
 			messages = append(messages, chatResponse.Choices[0].Message)
-			messages = append(messages, appendToolMsg)
+			for _, toolCall := range chatResponse.Choices[0].Message.ToolCalls {
+				toolLog := fmt.Sprintf("AI called tool %v with %v parameters", toolCall.Function.Name, toolCall.Function.Arguments)
+				logInternalAI(toolLog)
+				result, err := ExecuteToolCall(ctx, c.db, toolCall)
+				if err != nil {
+					result = fmt.Sprintf("tool execution failed Name: %v, Error: %v", toolCall.Function.Name, err.Error())
+				}
+				messages = append(messages, Message{
+					Role:       "tool",
+					ToolCallID: toolCall.ID,
+					Content:    result,
+				})
+			}
 			continue
 		}
 	}
