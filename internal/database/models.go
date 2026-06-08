@@ -57,11 +57,16 @@ func (ns NullCombatStatus) Value() (driver.Value, error) {
 }
 
 type Campaign struct {
-	ID        uuid.UUID
-	Name      string
-	OwnerID   uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID                uuid.UUID
+	Name              string
+	OwnerID           uuid.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	Theme             string
+	NarrativeSummary  string
+	DmNotes           string
+	Status            string
+	SummarizedThrough int32
 }
 
 type Character struct {
@@ -105,6 +110,17 @@ type CombatSession struct {
 	Combatants  json.RawMessage
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+type Message struct {
+	ID         uuid.UUID
+	CampaignID uuid.UUID
+	Role       string
+	Content    string
+	ToolCalls  json.RawMessage
+	ToolCallID string
+	Sequence   int32
+	CreatedAt  time.Time
 }
 
 type StatusEffect struct {
