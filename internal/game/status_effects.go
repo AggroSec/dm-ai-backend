@@ -22,7 +22,38 @@ type StatusEffectResponse struct {
 
 // ApplyStatusEffect adds a status effect to a character and returns the result.
 // Called by both HTTP handler and AI tool handler.
-func ApplyStatusEffect(ctx context.Context, db *database.Queries, characterID uuid.UUID, effect string, duration int, persists bool, ai_instruction string) (StatusEffectResponse, error) {
+func ApplyStatusEffect(ctx context.Context, db *database.Queries, characterID uuid.UUID, effect string, duration int, persists bool, ai_instruction string, combatSession *CombatSession) (StatusEffectResponse, error) {
+	if combatSession != nil {
+		for i, c := range combatSession.Combatants {
+			if c.ID == characterID && c.Type == "npc" {
+				statusEffect := StatusEffect{
+					ID:          uuid.New(),
+					Effect:      effect,
+					Duration:    duration,
+					Persists:    persists,
+					IsActive:    true,
+					Instruction: ai_instruction,
+				}
+				combatSession.Combatants[i].StatusEffects = append(combatSession.Combatants[i].StatusEffects, statusEffect)
+				err := saveCombatState(ctx, db, combatSession)
+				if err != nil {
+					return StatusEffectResponse{}, err
+				}
+				return StatusEffectResponse{
+					ID:                statusEffect.ID.String(),
+					AffectedCharacter: characterID.String(),
+					Effect:            statusEffect.Effect,
+					Duration:          statusEffect.Duration,
+					Persists:          statusEffect.Persists,
+					IsActive:          statusEffect.IsActive,
+					Instruction:       statusEffect.Instruction,
+					CreatedAt:         time.Now(),
+					UpdatedAt:         time.Now(),
+				}, nil
+			}
+		}
+	}
+
 	dbResult, err := db.AddStatusEffect(ctx, database.AddStatusEffectParams{
 		CharacterID: characterID,
 		Effect:      effect,
@@ -98,4 +129,30 @@ func TickStatusEffects(ctx context.Context, db *database.Queries, characterID uu
 	db.PurgeInactiveEffects(ctx, characterID)
 
 	return GetStatusEffects(ctx, db, characterID)
+}
+
+func RemoveStatusEffect(ctx context.Context, db *database.Queries, characterID uuid.UUID, effectID uuid.UUID, combatSession *CombatSession) error {
+	if combatSession != nil {
+		for i, c := range combatSession.Combatants {
+			if c.ID == characterID && c.Type == "npc" {
+				var updatedEffects []StatusEffect
+				for _, se := range combatSession.Combatants[i].StatusEffects {
+					if se.ID != effectID {
+						updatedEffects = append(updatedEffects, se)
+					}
+				}
+				combatSession.Combatants[i].StatusEffects = updatedEffects
+				err := saveCombatState(ctx, db, combatSession)
+				if err != nil {
+					return err
+				}
+
+			}
+		}
+	}
+
+	return db.RemoveStatusEffect(ctx, database.RemoveStatusEffectParams{
+		ID:          effectID,
+		CharacterID: characterID,
+	})
 }

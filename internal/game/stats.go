@@ -1,7 +1,7 @@
 package game
 
 const (
-	modifierDivisor = 2
+	modifierDivisor = 5
 	resourceDivisor = 5
 	baseMaxHP       = 50
 	baseMaxWP       = 30

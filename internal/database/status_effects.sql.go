@@ -109,6 +109,21 @@ func (q *Queries) PurgeNonPersistingEffects(ctx context.Context, characterID uui
 	return err
 }
 
+const removeStatusEffect = `-- name: RemoveStatusEffect :exec
+DELETE FROM status_effects
+WHERE id = $1 AND character_id = $2
+`
+
+type RemoveStatusEffectParams struct {
+	ID          uuid.UUID
+	CharacterID uuid.UUID
+}
+
+func (q *Queries) RemoveStatusEffect(ctx context.Context, arg RemoveStatusEffectParams) error {
+	_, err := q.db.ExecContext(ctx, removeStatusEffect, arg.ID, arg.CharacterID)
+	return err
+}
+
 const updateStatusDuration = `-- name: UpdateStatusDuration :one
 
 UPDATE status_effects

@@ -162,7 +162,7 @@ func GetToolDefinitions() []Tool {
 						},
 						"combat_id": {
 							Type:        "string",
-							Description: "The ID of the combat this is being applied in. This is used to apply the status effect to the correct combatant in the correct combat. This is option so that this tool allows for narrative calls. For narrative purposes do not call this on an NPC, only call on an NPC during combat, and always supply this if there is a combat.",
+							Description: "The ID of the combat this is being applied in. This is used to apply the status effect to the correct combatant in the correct combat. This is optional so that this tool allows for narrative calls. For narrative purposes do not call this on an NPC, only call on an NPC during combat, and always supply this if there is a combat.",
 						},
 						"effect": {
 							Type:        "string",
@@ -342,6 +342,10 @@ func GetToolDefinitions() []Tool {
 						"status_id": {
 							Type:        "string",
 							Description: "The ID of the status effect to remove.",
+						},
+						"combat_id": {
+							Type:        "string",
+							Description: "ID of the combat this applies to. This is optional, and used strictly for removing an effect from an NPC.",
 						},
 					},
 					Required: []string{"character_id", "status_id"},

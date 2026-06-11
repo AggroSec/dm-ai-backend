@@ -67,6 +67,7 @@ type Campaign struct {
 	DmNotes           string
 	Status            string
 	SummarizedThrough int32
+	Party             json.RawMessage
 }
 
 type Character struct {

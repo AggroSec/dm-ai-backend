@@ -40,3 +40,10 @@ SET narrative_summary = $2,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: UpdateCampaignParty :one
+UPDATE campaigns
+SET party = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;

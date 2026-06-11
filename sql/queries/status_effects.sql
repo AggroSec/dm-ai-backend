@@ -26,3 +26,7 @@ WHERE character_id = $1 AND is_active = FALSE;
 
 DELETE FROM status_effects
 WHERE character_id = $1 AND persists = FALSE;
+
+-- name: RemoveStatusEffect :exec
+DELETE FROM status_effects
+WHERE id = $1 AND character_id = $2;

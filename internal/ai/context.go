@@ -42,7 +42,7 @@ func BuildCombatContext(ctx context.Context, db *database.Queries, cfg *config.C
 	var msgs []Message
 	msgs = append(msgs, Message{
 		Role:    "system",
-		Content: "This is a placeholder system prompt",
+		Content: CombatSystemPrompt(campaign.Theme),
 	})
 	if campaign.NarrativeSummary != "" {
 		msgs = append(msgs, Message{
@@ -112,7 +112,7 @@ func BuildNarrativeContext(ctx context.Context, db *database.Queries, cfg *confi
 	var msgs []Message
 	msgs = append(msgs, Message{
 		Role:    "system",
-		Content: "placeholder narrative system prompt for now",
+		Content: NarrativeSystemPrompt(campaign.Theme),
 	})
 	if campaign.NarrativeSummary != "" {
 		msgs = append(msgs, Message{
@@ -154,6 +154,122 @@ func BuildNarrativeContext(ctx context.Context, db *database.Queries, cfg *confi
 	})
 
 	return msgs, nil
+}
+
+func BuildCharacterCreationContext(cfg *config.Config, ctx context.Context, db *database.Queries, character database.Character, campaignID uuid.UUID, playerMessage string) ([]Message, error) {
+	classReference, err := BuildClassReferenceContext(cfg.DataDir)
+	if err != nil {
+		return []Message{}, err
+	}
+
+	classDomain := getClassDomain(character.Class)
+	fatesReference, err := BuildFatesReferenceContext(cfg.DataDir, classDomain)
+	if err != nil {
+		return []Message{}, err
+	}
+
+	unsummarizedMessages, err := db.GetMessagesAfterSequence(ctx, database.GetMessagesAfterSequenceParams{
+		CampaignID: campaignID,
+		Sequence:   0,
+	})
+	if err != nil {
+		return []Message{}, err
+	}
+
+	var msgs []Message
+	msgs = append(msgs, Message{
+		Role:    "system",
+		Content: CharacterCreationSystemPrompt(),
+	})
+	msgs = append(msgs, Message{
+		Role:    "system",
+		Content: CreateCharacterContext(character),
+	})
+	msgs = append(msgs, Message{
+		Role:    "system",
+		Content: classReference,
+	})
+	msgs = append(msgs, Message{
+		Role:    "system",
+		Content: fatesReference,
+	})
+
+	for _, message := range unsummarizedMessages {
+		var toolCalls []ToolCall
+		if message.ToolCalls != nil {
+			err = json.Unmarshal(message.ToolCalls, &toolCalls)
+			if err != nil {
+				return []Message{}, err
+			}
+		}
+		msgs = append(msgs, Message{
+			Role:       message.Role,
+			Content:    message.Content,
+			ToolCalls:  toolCalls,
+			ToolCallID: message.ToolCallID,
+		})
+	}
+
+	msgs = append(msgs, Message{
+		Role:    "user",
+		Content: playerMessage,
+	})
+
+	return msgs, nil
+}
+
+func BuildClassReferenceContext(dataDir string) (string, error) {
+	classes := []string{"warrior", "runeblade", "seer"}
+	var sb strings.Builder
+	sb.WriteString("CLASS REFERENCE\n")
+
+	for _, class := range classes {
+		data, err := game.LoadClassBranch(dataDir, class, "base")
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&sb, "\n[%s] %s\n", strings.ToUpper(class), data.Description)
+		sb.WriteString("Level 1 Skills:\n")
+		for _, skill := range data.Skills {
+			if skill.LevelRequired == 1 {
+				fmt.Fprintf(&sb, "  - %s (AP: %d, WP: %d, HP: %d) — %s\n",
+					skill.Name, skill.APCost, skill.WPCost, skill.HPCost, skill.Description)
+			}
+		}
+	}
+
+	return sb.String(), nil
+}
+
+func BuildFatesReferenceContext(dataDir, domain string) (string, error) {
+	fates, err := game.LoadFatesForDomain(dataDir, domain)
+	if err != nil {
+		return "", err
+	}
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "AVAILABLE FATES (%s domain)\n", strings.ToUpper(domain))
+	sb.WriteString("Choose one Driving Fate and one Binding Fate. Both must be from this domain.\n\n")
+
+	for _, fate := range fates {
+		fmt.Fprintf(&sb, "[%s] %s\n  %s\n  Effect: %s\n\n",
+			strings.ToUpper(fate.Type), fate.Name, fate.Description, fate.Effect)
+	}
+
+	return sb.String(), nil
+}
+
+func getClassDomain(class string) string {
+	switch strings.ToLower(class) {
+	case "warrior":
+		return "physical"
+	case "seer":
+		return "magical"
+	case "runeblade":
+		return "hybrid"
+	default:
+		return "physical"
+	}
 }
 
 func CreateCharacterContext(character database.Character) string {

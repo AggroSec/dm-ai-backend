@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 )
@@ -14,7 +15,7 @@ import (
 const createCampaign = `-- name: CreateCampaign :one
 INSERT INTO campaigns (name, owner_id, theme)
 VALUES ($1, $2, $3)
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
 `
 
 type CreateCampaignParams struct {
@@ -37,12 +38,13 @@ func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) 
 		&i.DmNotes,
 		&i.Status,
 		&i.SummarizedThrough,
+		&i.Party,
 	)
 	return i, err
 }
 
 const getCampaign = `-- name: GetCampaign :one
-SELECT id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through FROM campaigns
+SELECT id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party FROM campaigns
 WHERE id = $1
 `
 
@@ -60,12 +62,13 @@ func (q *Queries) GetCampaign(ctx context.Context, id uuid.UUID) (Campaign, erro
 		&i.DmNotes,
 		&i.Status,
 		&i.SummarizedThrough,
+		&i.Party,
 	)
 	return i, err
 }
 
 const getCampaignsByOwner = `-- name: GetCampaignsByOwner :many
-SELECT id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through FROM campaigns
+SELECT id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party FROM campaigns
 WHERE owner_id = $1
 ORDER BY created_at DESC
 `
@@ -90,6 +93,7 @@ func (q *Queries) GetCampaignsByOwner(ctx context.Context, ownerID uuid.UUID) ([
 			&i.DmNotes,
 			&i.Status,
 			&i.SummarizedThrough,
+			&i.Party,
 		); err != nil {
 			return nil, err
 		}
@@ -109,7 +113,7 @@ UPDATE campaigns
 SET dm_notes = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
 `
 
 type UpdateCampaignDMNotesParams struct {
@@ -131,6 +135,39 @@ func (q *Queries) UpdateCampaignDMNotes(ctx context.Context, arg UpdateCampaignD
 		&i.DmNotes,
 		&i.Status,
 		&i.SummarizedThrough,
+		&i.Party,
+	)
+	return i, err
+}
+
+const updateCampaignParty = `-- name: UpdateCampaignParty :one
+UPDATE campaigns
+SET party = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
+`
+
+type UpdateCampaignPartyParams struct {
+	ID    uuid.UUID
+	Party json.RawMessage
+}
+
+func (q *Queries) UpdateCampaignParty(ctx context.Context, arg UpdateCampaignPartyParams) (Campaign, error) {
+	row := q.db.QueryRowContext(ctx, updateCampaignParty, arg.ID, arg.Party)
+	var i Campaign
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Theme,
+		&i.NarrativeSummary,
+		&i.DmNotes,
+		&i.Status,
+		&i.SummarizedThrough,
+		&i.Party,
 	)
 	return i, err
 }
@@ -140,7 +177,7 @@ UPDATE campaigns
 SET status = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
 `
 
 type UpdateCampaignStatusParams struct {
@@ -162,6 +199,7 @@ func (q *Queries) UpdateCampaignStatus(ctx context.Context, arg UpdateCampaignSt
 		&i.DmNotes,
 		&i.Status,
 		&i.SummarizedThrough,
+		&i.Party,
 	)
 	return i, err
 }
@@ -171,7 +209,7 @@ UPDATE campaigns
 SET theme = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
 `
 
 type UpdateCampaignThemeParams struct {
@@ -193,6 +231,7 @@ func (q *Queries) UpdateCampaignTheme(ctx context.Context, arg UpdateCampaignThe
 		&i.DmNotes,
 		&i.Status,
 		&i.SummarizedThrough,
+		&i.Party,
 	)
 	return i, err
 }
@@ -203,7 +242,7 @@ SET narrative_summary = $2,
     summarized_through = $3,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
 `
 
 type UpdateNarrativeSummaryParams struct {
@@ -226,6 +265,7 @@ func (q *Queries) UpdateNarrativeSummary(ctx context.Context, arg UpdateNarrativ
 		&i.DmNotes,
 		&i.Status,
 		&i.SummarizedThrough,
+		&i.Party,
 	)
 	return i, err
 }
