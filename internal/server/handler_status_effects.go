@@ -33,7 +33,7 @@ func (s *Server) handlerApplyStatusEffect(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	statusEffect, err := game.ApplyStatusEffect(r.Context(), s.db, effectedCharacter, req.Effect, req.Duration, req.Persists, req.Instruction)
+	statusEffect, err := game.ApplyStatusEffect(r.Context(), s.db, effectedCharacter, req.Effect, req.Duration, req.Persists, req.Instruction, nil)
 	if err != nil {
 		logStatusError("failed to apply status effect", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")

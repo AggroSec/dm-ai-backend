@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/AggroSec/dm-ai-backend/internal/database"
+	"github.com/AggroSec/dm-ai-backend/internal/game"
 	"github.com/google/uuid"
-	"github.com/sqlc-dev/pqtype"
 )
 
 type characterResponse struct {
@@ -81,8 +81,8 @@ func (s *Server) handlerCreateCharacter(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		log.Printf(" | internal server error - was not able to retrieve user: %v", err)
 	}
-	log.Printf(" | [CharacterCreation]character: %v(%v) was successfully created for %v(%v)", character.Name, character.ID, user.Username, user.ID)
-	respondJSON(w, http.StatusCreated, dbCharacterToResponse(character))
+	log.Printf(" | [CharacterCreation] character: %v(%v) was successfully created for %v(%v)", character.Name, character.ID, user.Username, user.ID)
+	respondJSON(w, http.StatusCreated, "character created successfully")
 }
 
 func (s *Server) handlerGetUserCharacters(w http.ResponseWriter, r *http.Request) {
@@ -101,17 +101,12 @@ func (s *Server) handlerGetUserCharacters(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	var response []characterResponse
-	for _, c := range characters {
-		response = append(response, dbCharacterToResponse(c))
-	}
-
 	user, err := s.db.GetUserByID(r.Context(), userUUID)
 	if err != nil {
 		log.Printf(" | internal server error - was not able to retrieve user: %v", err)
 	}
 	log.Printf(" | [CharacterInfo] retrieved character list of: %v(%v)", user.Username, user.ID)
-	respondJSON(w, http.StatusOK, response)
+	respondJSON(w, http.StatusOK, characters) // this is ugly, can come back and fix later when needed.
 }
 
 func (s *Server) handlerGetCharacterByID(w http.ResponseWriter, r *http.Request) {
@@ -122,14 +117,14 @@ func (s *Server) handlerGetCharacterByID(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	character, err := s.db.GetCharacterByID(r.Context(), characterID)
+	character, err := game.GetCharacterInfo(r.Context(), s.db, characterID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "character not found")
-		log.Printf(" | [CharacterInfo] failed to retrieve character from db: %v", err)
+		log.Printf(" | [CharacterInfo] game function to get character info failed: %v", err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	respondJSON(w, http.StatusOK, dbCharacterToResponse(character))
+	respondJSON(w, http.StatusOK, character)
 	log.Printf(" | [CharacterInfo] character info successfully retrieved: %v(%v) - %v", character.Name, character.ID, character.UserID)
 }
 
@@ -141,14 +136,7 @@ func (s *Server) handlerUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	character, err := s.db.GetCharacterByID(r.Context(), characterID)
-	if err != nil {
-		respondError(w, http.StatusInternalServerError, "character not found")
-		log.Printf(" | [CharacterUpdate] failed to retrieve character from db: %v", err)
-		return
-	}
-
-	var req updateCharacterRequest
+	var req game.UpdateCharacterRequest
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "bad request")
@@ -156,42 +144,15 @@ func (s *Server) handlerUpdateCharacter(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	applyCharacterUpdates(&character, req)
-
-	updated, err := s.db.UpdateCharacter(r.Context(), database.UpdateCharacterParams{
-		ID:                    characterID,
-		Name:                  character.Name,
-		Race:                  character.Race,
-		Class:                 character.Class,
-		Level:                 character.Level,
-		Strength:              character.Strength,
-		Dexterity:             character.Dexterity,
-		Fortitude:             character.Fortitude,
-		Willpower:             character.Willpower,
-		Alacrity:              character.Alacrity,
-		Wisdom:                character.Wisdom,
-		CurrentHp:             character.CurrentHp,
-		MaxHp:                 character.MaxHp,
-		CurrentWp:             character.CurrentWp,
-		MaxWp:                 character.MaxWp,
-		DrivingFate:           character.DrivingFate,
-		BindingFate:           character.BindingFate,
-		TalentsInvested:       character.TalentsInvested,
-		TalentPointsAvailable: character.TalentPointsAvailable,
-		Inventory:             character.Inventory,
-		ActionPoints:          character.ActionPoints,
-		MaxAp:                 character.MaxAp,
-		OvercapAp:             character.OvercapAp,
-		EquippedSlots:         character.EquippedSlots,
-	})
+	result, err := game.ApplyCharacterUpdates(r.Context(), s.db, characterID, req)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, "failed to update character")
-		log.Printf(" | [CharacterUpdate] failed to update character: %v", err)
+		log.Printf("| [CharacterUpdate] game update of character failed: %v", err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	respondJSON(w, http.StatusOK, dbCharacterToResponse(updated))
-	log.Printf(" | [CharacterUpdate] character updated: %v(%v)", updated.Name, updated.ID)
+	respondJSON(w, http.StatusOK, result)
+	log.Printf(" | [CharacterUpdate] character updated: %v(%v)", result.Name, result.ID)
 }
 
 func (s *Server) handlerDeleteCharacter(w http.ResponseWriter, r *http.Request) {
@@ -221,139 +182,4 @@ func (s *Server) handlerDeleteCharacter(w http.ResponseWriter, r *http.Request) 
 
 	respondJSON(w, http.StatusOK, map[string]string{"message": "character deleted"})
 	log.Printf(" | [CharacterDelete] character %v successfully deleted by user %v", characterID, userID)
-}
-
-func dbCharacterToResponse(c database.Character) characterResponse {
-	var equippedSlots json.RawMessage
-	if c.EquippedSlots.Valid {
-		equippedSlots = c.EquippedSlots.RawMessage
-	}
-	return characterResponse{
-		ID:                    c.ID.String(),
-		UserID:                c.UserID.String(),
-		Name:                  c.Name,
-		Race:                  c.Race,
-		Class:                 c.Class,
-		Level:                 c.Level,
-		Experience:            c.Experience,
-		DrivingFate:           c.DrivingFate,
-		BindingFate:           c.BindingFate,
-		Strength:              c.Strength,
-		Dexterity:             c.Dexterity,
-		Fortitude:             c.Fortitude,
-		Willpower:             c.Willpower,
-		Alacrity:              c.Alacrity,
-		Wisdom:                c.Wisdom,
-		MaxHP:                 c.MaxHp,
-		CurrentHP:             c.CurrentHp,
-		MaxWP:                 c.MaxWp,
-		CurrentWP:             c.CurrentWp,
-		CurrentAP:             c.ActionPoints,
-		MaxAP:                 c.MaxAp,
-		OvercapAP:             c.OvercapAp,
-		TalentPointsAvailable: c.TalentPointsAvailable,
-		TalentsInvested:       c.TalentsInvested,
-		Inventory:             c.Inventory,
-		EquippedSlots:         equippedSlots,
-		//StatusEffects:         c.StatusEffects,
-		UpdatedAt: c.UpdatedAt,
-	}
-}
-
-type updateCharacterRequest struct {
-	Name                  *string         `json:"name"`
-	Race                  *string         `json:"race"`
-	Class                 *string         `json:"class"`
-	Level                 *int32          `json:"level"`
-	DrivingFate           *string         `json:"driving_fate"`
-	BindingFate           *string         `json:"binding_fate"`
-	Strength              *int32          `json:"strength"`
-	Dexterity             *int32          `json:"dexterity"`
-	Fortitude             *int32          `json:"fortitude"`
-	Willpower             *int32          `json:"willpower"`
-	Alacrity              *int32          `json:"alacrity"`
-	Wisdom                *int32          `json:"wisdom"`
-	MaxHP                 *int32          `json:"max_hp"`
-	CurrentHP             *int32          `json:"current_hp"`
-	MaxWP                 *int32          `json:"max_wp"`
-	CurrentWP             *int32          `json:"current_wp"`
-	CurrentAP             *int32          `json:"current_ap"`
-	MaxAP                 *int32          `json:"max_ap"`
-	OvercapAP             *int32          `json:"overcap_ap"`
-	TalentPointsAvailable *int32          `json:"talent_points_available"`
-	TalentsInvested       json.RawMessage `json:"talents_invested"`
-	Inventory             json.RawMessage `json:"inventory"`
-	EquippedSlots         json.RawMessage `json:"equipped_slots"`
-}
-
-func applyCharacterUpdates(c *database.Character, req updateCharacterRequest) {
-	if req.Name != nil {
-		c.Name = *req.Name
-	}
-	if req.Race != nil {
-		c.Race = *req.Race
-	}
-	if req.Class != nil {
-		c.Class = *req.Class
-	}
-	if req.Level != nil {
-		c.Level = *req.Level
-	}
-	if req.DrivingFate != nil {
-		c.DrivingFate = *req.DrivingFate
-	}
-	if req.BindingFate != nil {
-		c.BindingFate = *req.BindingFate
-	}
-	if req.Strength != nil {
-		c.Strength = *req.Strength
-	}
-	if req.Dexterity != nil {
-		c.Dexterity = *req.Dexterity
-	}
-	if req.Fortitude != nil {
-		c.Fortitude = *req.Fortitude
-	}
-	if req.Willpower != nil {
-		c.Willpower = *req.Willpower
-	}
-	if req.Alacrity != nil {
-		c.Alacrity = *req.Alacrity
-	}
-	if req.Wisdom != nil {
-		c.Wisdom = *req.Wisdom
-	}
-	if req.MaxHP != nil {
-		c.MaxHp = *req.MaxHP
-	}
-	if req.CurrentHP != nil {
-		c.CurrentHp = *req.CurrentHP
-	}
-	if req.MaxWP != nil {
-		c.MaxWp = *req.MaxWP
-	}
-	if req.CurrentWP != nil {
-		c.CurrentWp = *req.CurrentWP
-	}
-	if req.CurrentAP != nil {
-		c.ActionPoints = *req.CurrentAP
-	}
-	if req.MaxAP != nil {
-		c.MaxAp = *req.MaxAP
-	}
-	if req.OvercapAP != nil {
-		c.OvercapAp = *req.OvercapAP
-	}
-	if req.TalentPointsAvailable != nil {
-		c.TalentPointsAvailable = *req.TalentPointsAvailable
-	}
-	if req.TalentsInvested != nil {
-		c.TalentsInvested = req.TalentsInvested
-	}
-	if req.Inventory != nil {
-		c.Inventory = req.Inventory
-	}
-	if req.EquippedSlots != nil {
-		c.EquippedSlots = pqtype.NullRawMessage{RawMessage: req.EquippedSlots, Valid: true}
-	}
 }

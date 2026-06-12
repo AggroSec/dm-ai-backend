@@ -95,6 +95,8 @@ func (d *Dispatcher) handleStartCombat(ctx context.Context, args json.RawMessage
 		return "", err
 	}
 
+	logAIDispatcher(fmt.Sprintf("Combat session created: %v | NPCs: %d | Party: %d", combatSession.ID, len(npcs), len(party)))
+
 	jsonCombatSession, err := json.Marshal(combatSession)
 	if err != nil {
 		return "", err
@@ -117,6 +119,8 @@ func (d *Dispatcher) handleGetCombatState(ctx context.Context, args json.RawMess
 	if err != nil {
 		return "", err
 	}
+
+	logAIDispatcher(fmt.Sprintf("Combat state retrieved: %v | Round: %d | CurrentTurn: %v", toolArgs.CombatID, combatSession.Round, combatSession.CurrentTurn))
 
 	jsonCombatSession, err := json.Marshal(combatSession)
 	if err != nil {
@@ -141,6 +145,8 @@ func (d *Dispatcher) handleEndCombat(ctx context.Context, args json.RawMessage) 
 	if err != nil {
 		return "", err
 	}
+
+	logAIDispatcher(fmt.Sprintf("Combat ended: %v | Outcome: %s", toolArgs.CombatID, toolArgs.Outcome))
 
 	jsonCombatSession, err := json.Marshal(combatSession)
 	if err != nil {
@@ -167,15 +173,17 @@ func (d *Dispatcher) handleSkipTurn(ctx context.Context, args json.RawMessage) (
 		return "", err
 	}
 
-	//validate combatants match
 	if toolArgs.Entity != combatSession.CurrentTurn {
-		return "", fmt.Errorf("supplied entity ID(%v) does not match entity ID(%v) for current turn control.", toolArgs.Entity, combatSession.CurrentTurn)
+		logAIDispatcher(fmt.Sprintf("skip_turn mismatch: supplied %v, current turn %v", toolArgs.Entity, combatSession.CurrentTurn))
+		return fmt.Sprintf("skip_turn failed: entity %v is not the current turn holder, current turn is %v", toolArgs.Entity, combatSession.CurrentTurn), nil
 	}
 
 	combatSession, err = game.AdvanceTurn(ctx, toolArgs.CombatID, d.db)
 	if err != nil {
 		return "", err
 	}
+
+	logAIDispatcher(fmt.Sprintf("Turn skipped: %v | Reason: %s | NextTurn: %v", toolArgs.Entity, toolArgs.Reason, combatSession.CurrentTurn))
 
 	jsonCombatSession, err := json.Marshal(combatSession)
 	if err != nil {
@@ -222,8 +230,16 @@ func (d *Dispatcher) handleApplyStatusEffect(ctx context.Context, args json.RawM
 	}
 
 	statusEffect, err := game.ApplyStatusEffect(ctx, d.db, toolArgs.CombatantID, toolArgs.Effect, toolArgs.Duration, toolArgs.Persists, toolArgs.Instruction, combatSession)
+	if err != nil {
+		return "", err
+	}
+
+	logAIDispatcher(fmt.Sprintf("Status effect applied: %s | Target: %v | Duration: %d | Persists: %v", toolArgs.Effect, toolArgs.CombatantID, toolArgs.Duration, toolArgs.Persists))
 
 	jsonEffect, err := json.Marshal(statusEffect)
+	if err != nil {
+		return "", err
+	}
 	return fmt.Sprintf("effect applied successfully: %s", string(jsonEffect)), nil
 }
 
@@ -253,37 +269,182 @@ func (d *Dispatcher) handleRemoveStatusEffect(ctx context.Context, args json.Raw
 		return "", err
 	}
 
+	logAIDispatcher(fmt.Sprintf("Status effect removed: %v | Target: %v", toolArgs.StatusID, toolArgs.CharacterID))
+
 	return fmt.Sprintf("Status effect(%v) removed successfully.", toolArgs.StatusID), nil
 }
 
 func (d *Dispatcher) handleActionFailed(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: action_failed")
+	type failedActionParams struct {
+		CharacterID uuid.UUID `json:"character_id"`
+		Reason      string    `json:"reason"`
+	}
+	var toolArgs failedActionParams
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	logAIDispatcher(fmt.Sprintf("Character[%v] action failed: %s", toolArgs.CharacterID, toolArgs.Reason))
+	return fmt.Sprintf("Instructions: respond to the player. Reason action failed: %s", toolArgs.Reason), nil
 }
 
 func (d *Dispatcher) handleAwardXP(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: award_xp")
+	type awardXPParams struct {
+		CharacterID uuid.UUID `json:"character_id"`
+		Amount      int       `json:"amount"`
+	}
+	var toolArgs awardXPParams
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	results, err := game.AwardXP(ctx, d.db, toolArgs.CharacterID, toolArgs.Amount)
+	if err != nil {
+		return "", err
+	}
+
+	logAIDispatcher(fmt.Sprintf("XP awarded: %d | Character: %v | LeveledUp: %v", toolArgs.Amount, toolArgs.CharacterID, results.LeveledUp))
+
+	jsonData, err := json.Marshal(results)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("XP awarded successfully: %v", string(jsonData)), nil
 }
 
 func (d *Dispatcher) handleGetCharacter(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: get_character")
+	var characterID uuid.UUID
+	err := json.Unmarshal(args, &characterID)
+	if err != nil {
+		return "", err
+	}
+
+	characterInfo, err := game.GetCharacterInfo(ctx, d.db, characterID)
+	if err != nil {
+		return "", err
+	}
+
+	jsonData, err := json.Marshal(characterInfo)
+	if err != nil {
+		return "", err
+	}
+
+	logAIDispatcher(fmt.Sprintf("character %s(%v) info retrieved successfully", characterInfo.Name, characterInfo.ID))
+	return string(jsonData), nil
 }
 
 func (d *Dispatcher) handleGetSkills(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: get_skills")
+	type getSkillsParams struct {
+		CharacterID  uuid.UUID `json:"character_id"`
+		TalentPoints int       `json:"talent_points"` //will be zero unless leveling up
+	}
+	var toolArgs getSkillsParams
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	characterInfo, err := game.GetCharacterInfo(ctx, d.db, toolArgs.CharacterID)
+	if err != nil {
+		return "", err
+	}
+
+	skills, err := game.LoadAllSkillsForCharacter(d.cfg.DataDir, characterInfo.Class, characterInfo.TalentsInvested, toolArgs.TalentPoints)
+	if err != nil {
+		return "", err
+	}
+
+	jsonData, err := json.Marshal(skills)
+	if err != nil {
+		return "", err
+	}
+
+	logAIDispatcher("Character %s(%v) skills retrieves successfully")
+	return string(jsonData), nil
 }
 
 func (d *Dispatcher) handleUpdateCharacter(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: update_character")
+	type updateCharacterArgs struct {
+		CharacterID uuid.UUID `json:"character_id"`
+		game.UpdateCharacterRequest
+	}
+	var toolArgs updateCharacterArgs
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	updatedCharacter, err := game.ApplyCharacterUpdates(ctx, d.db, toolArgs.CharacterID, toolArgs.UpdateCharacterRequest)
+	if err != nil {
+		return "", err
+	}
+
+	jsonData, err := json.Marshal(updatedCharacter)
+
+	logAIDispatcher(fmt.Sprintf("Character %s(%v) was updated successfully", updatedCharacter.Name, updatedCharacter.ID))
+	return fmt.Sprintf("character updated successfully: %s", string(jsonData)), nil
 }
 
 func (d *Dispatcher) handleGiveItem(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: give_item")
+	type giveItemParams struct {
+		CharacterID uuid.UUID `json:"character_id"`
+		Item        game.Item `json:"item"`
+	}
+	var toolArgs giveItemParams
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	characterInfo, err := game.GiveItem(ctx, d.db, toolArgs.CharacterID, toolArgs.Item)
+	if err != nil {
+		return "", err
+	}
+
+	jsonData, err := json.Marshal(characterInfo)
+	if err != nil {
+		return "", err
+	}
+	logAIDispatcher(fmt.Sprintf("character %s(%v) has been given item: %v", characterInfo.Name, characterInfo.ID, toolArgs.Item))
+	return fmt.Sprintf("item successfully given to character: %s", string(jsonData)), nil
 }
 
 func (d *Dispatcher) handleEquipItem(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: equip_item")
+	type equipItemParams struct {
+		CharacterID uuid.UUID `json:"character_id"`
+		ItemID      string    `json:"item_id"`
+		Slot        string    `json:"slot"`
+	}
+	var toolArgs equipItemParams
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = game.UnequipItem(ctx, d.db, toolArgs.CharacterID, toolArgs.Slot)
+	if err != nil {
+		return "", err
+	}
+	updatedCharacterInfo, err := game.EquipItem(ctx, d.db, toolArgs.CharacterID, toolArgs.Slot, toolArgs.ItemID)
+	if err != nil {
+		return "", err
+	}
+
+	jsonData, err := json.Marshal(updatedCharacterInfo)
+	if err != nil {
+		return "", err
+	}
+
+	logAIDispatcher(fmt.Sprintf("Character %s(%v) successfully equipped item %s", updatedCharacterInfo.Name, updatedCharacterInfo.ID, toolArgs.ItemID))
+	return fmt.Sprintf("Item equipped successfully: %s", string(jsonData)), nil
 }
 
 func (d *Dispatcher) handleRest(ctx context.Context, args json.RawMessage) (string, error) {
 	return "", fmt.Errorf("not implemented: rest")
+}
+
+func logAIDispatcher(msg string) {
+	log.Printf(" | [AIToolDispatcher] %s", msg)
 }

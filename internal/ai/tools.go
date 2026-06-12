@@ -247,7 +247,7 @@ func GetToolDefinitions() []Tool {
 			Type: "function",
 			Function: Function{
 				Name:        "award_xp",
-				Description: "Used to award experience points to a character.",
+				Description: "Awards XP to a character after combat or a significant narrative event. Returns level up information and instructions if the character has leveled up. If leveled_up is true in the response, follow the level_up_instructions exactly.",
 				Parameters: Parameters{
 					Type: "object",
 					Properties: map[string]Property{
@@ -314,7 +314,7 @@ func GetToolDefinitions() []Tool {
 			Type: "function",
 			Function: Function{
 				Name:        "get_skills",
-				Description: "Used to retrieve the skills of a specific character. Used if you need to reference or supply the player with options on what they have ability-wise. Returns an array of the characters skills with all details for each skill.",
+				Description: "Returns the full skill tree for the character's class, organized by branch. Each skill includes its status: 'unlocked' (already invested and usable), 'available' (meets level requirement and character has talent points to spend), or 'locked' (level requirement not yet met). Use during combat to check available skills, during narrative to answer player questions about their abilities, and during level up to present the full picture of current and future options to the player.",
 				Parameters: Parameters{
 					Type: "object",
 					Properties: map[string]Property{
@@ -322,8 +322,12 @@ func GetToolDefinitions() []Tool {
 							Type:        "string",
 							Description: "The ID of the character whose skills to retrieve.",
 						},
+						"talent_points": {
+							Type: "integer",
+							Description: "The number of talent points available to invest. This is zero if they are not leveling up, 1 otherwise. Not an options argument as the function requires a number to get info.",
+						}
 					},
-					Required: []string{"character_id"},
+					Required: []string{"character_id", "talent_points"},
 				},
 			},
 		},

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Skill represents a single ability definition loaded from a JSON data file.
@@ -30,19 +31,32 @@ type ClassData struct {
 // TalentInvestment tracks how many points a character has invested in a branch.
 // Stored as JSONB in the characters table talents_invested column.
 type TalentInvestment struct {
-	Branch string `json:"branch"` // e.g. "base", "lightning", "hexblade"
-	Points int    `json:"points"` // number of talent points invested
+	Branch string `json:"branch"`
+	Points int    `json:"points"`
 }
 
 // Fate represents a single fate definition loaded from a JSON data file.
 type Fate struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
-	Type          string `json:"type"`   // driving or binding
-	Domain        string `json:"domain"` // physical, magical, hybrid
+	Type          string `json:"type"`
+	Domain        string `json:"domain"`
 	Description   string `json:"description"`
 	Effect        string `json:"effect"`
 	AIInstruction string `json:"ai_instruction"`
+}
+
+// SkillWithStatus represents a skill with its availability status for a character.
+type SkillWithStatus struct {
+	Skill
+	Branch string `json:"branch"`
+	Status string `json:"status"` // "unlocked", "available", "locked"
+}
+
+// BranchSkills groups skills by branch with their status.
+type BranchSkills struct {
+	Description string            `json:"description"`
+	Skills      []SkillWithStatus `json:"skills"`
 }
 
 // LoadClassBranch loads a single class branch JSON file.
@@ -62,15 +76,12 @@ func LoadClassBranch(dataDir, class, branch string) (ClassData, error) {
 // LoadSkillsForCharacter loads all skills available to a character based on
 // their class and actual talent investments. Only returns skills where
 // level_required <= points invested in that branch.
-// Base class skills (branch "base") are always loaded — level_required maps
-// to the skill's position in the base progression.
 func LoadSkillsForCharacter(dataDir, class string, talents []TalentInvestment) ([]Skill, error) {
 	var available []Skill
 
 	for _, talent := range talents {
 		data, err := LoadClassBranch(dataDir, class, talent.Branch)
 		if err != nil {
-			// Skip missing branch files gracefully — don't fail the whole load
 			continue
 		}
 		for _, skill := range data.Skills {
@@ -81,6 +92,64 @@ func LoadSkillsForCharacter(dataDir, class string, talents []TalentInvestment) (
 	}
 
 	return available, nil
+}
+
+// LoadAllSkillsForCharacter loads the full skill tree for a character's class
+// across all branches, categorizing each skill as:
+// - "unlocked": talent points invested meet level_required
+// - "available": character has unspent talent points and investing would meet level_required
+// - "locked": level_required not yet met even with available points
+func LoadAllSkillsForCharacter(dataDir, class string, talents []TalentInvestment, talentPointsAvailable int) (map[string]BranchSkills, error) {
+	investedPoints := make(map[string]int)
+	for _, t := range talents {
+		investedPoints[t.Branch] = t.Points
+	}
+
+	classPath := filepath.Join(dataDir, "classes", class)
+	entries, err := os.ReadDir(classPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read class directory %s: %w", class, err)
+	}
+
+	result := make(map[string]BranchSkills)
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		branchName := strings.TrimSuffix(entry.Name(), ".json")
+
+		data, err := LoadClassBranch(dataDir, class, branchName)
+		if err != nil {
+			return nil, err
+		}
+
+		points := investedPoints[branchName]
+		var skillsWithStatus []SkillWithStatus
+
+		for _, skill := range data.Skills {
+			var status string
+			if skill.LevelRequired <= points {
+				status = "unlocked"
+			} else if skill.LevelRequired <= points+talentPointsAvailable {
+				status = "available"
+			} else {
+				status = "locked"
+			}
+			skillsWithStatus = append(skillsWithStatus, SkillWithStatus{
+				Skill:  skill,
+				Branch: branchName,
+				Status: status,
+			})
+		}
+
+		result[branchName] = BranchSkills{
+			Description: data.Description,
+			Skills:      skillsWithStatus,
+		}
+	}
+
+	return result, nil
 }
 
 // LoadFate loads a single fate definition by domain and ID.
@@ -98,7 +167,6 @@ func LoadFate(dataDir, domain, fateID string) (Fate, error) {
 }
 
 // LoadAllFates loads every fate definition from all domain subdirectories.
-// Used during character creation to present fate options.
 func LoadAllFates(dataDir string) ([]Fate, error) {
 	domains := []string{"physical", "magical", "hybrid"}
 	var fates []Fate
@@ -127,7 +195,6 @@ func LoadAllFates(dataDir string) ([]Fate, error) {
 }
 
 // LoadFatesForDomain loads all fates for a specific domain.
-// Used during character creation when player has chosen a domain.
 func LoadFatesForDomain(dataDir, domain string) ([]Fate, error) {
 	domainPath := filepath.Join(dataDir, "fates", domain)
 	entries, err := os.ReadDir(domainPath)

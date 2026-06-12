@@ -295,6 +295,55 @@ func (q *Queries) UpdateCharacter(ctx context.Context, arg UpdateCharacterParams
 	return i, err
 }
 
+const updateCharacterEquippedSlots = `-- name: UpdateCharacterEquippedSlots :one
+UPDATE characters
+SET equipped_slots = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap, equipped_slots
+`
+
+type UpdateCharacterEquippedSlotsParams struct {
+	ID            uuid.UUID
+	EquippedSlots pqtype.NullRawMessage
+}
+
+func (q *Queries) UpdateCharacterEquippedSlots(ctx context.Context, arg UpdateCharacterEquippedSlotsParams) (Character, error) {
+	row := q.db.QueryRowContext(ctx, updateCharacterEquippedSlots, arg.ID, arg.EquippedSlots)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Race,
+		&i.Class,
+		&i.Level,
+		&i.Experience,
+		&i.DrivingFate,
+		&i.BindingFate,
+		&i.Strength,
+		&i.Dexterity,
+		&i.Fortitude,
+		&i.Willpower,
+		&i.Alacrity,
+		&i.Wisdom,
+		&i.MaxHp,
+		&i.CurrentHp,
+		&i.MaxWp,
+		&i.CurrentWp,
+		&i.ActionPoints,
+		&i.TalentPointsAvailable,
+		&i.TalentsInvested,
+		&i.Inventory,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MaxAp,
+		&i.OvercapAp,
+		&i.EquippedSlots,
+	)
+	return i, err
+}
+
 const updateCharacterHP = `-- name: UpdateCharacterHP :exec
 UPDATE characters SET current_hp = $2 WHERE id = $1
 `
@@ -309,6 +358,104 @@ func (q *Queries) UpdateCharacterHP(ctx context.Context, arg UpdateCharacterHPPa
 	return err
 }
 
+const updateCharacterInventory = `-- name: UpdateCharacterInventory :one
+UPDATE characters
+SET inventory = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap, equipped_slots
+`
+
+type UpdateCharacterInventoryParams struct {
+	ID        uuid.UUID
+	Inventory json.RawMessage
+}
+
+func (q *Queries) UpdateCharacterInventory(ctx context.Context, arg UpdateCharacterInventoryParams) (Character, error) {
+	row := q.db.QueryRowContext(ctx, updateCharacterInventory, arg.ID, arg.Inventory)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Race,
+		&i.Class,
+		&i.Level,
+		&i.Experience,
+		&i.DrivingFate,
+		&i.BindingFate,
+		&i.Strength,
+		&i.Dexterity,
+		&i.Fortitude,
+		&i.Willpower,
+		&i.Alacrity,
+		&i.Wisdom,
+		&i.MaxHp,
+		&i.CurrentHp,
+		&i.MaxWp,
+		&i.CurrentWp,
+		&i.ActionPoints,
+		&i.TalentPointsAvailable,
+		&i.TalentsInvested,
+		&i.Inventory,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MaxAp,
+		&i.OvercapAp,
+		&i.EquippedSlots,
+	)
+	return i, err
+}
+
+const updateCharacterLevel = `-- name: UpdateCharacterLevel :one
+UPDATE characters
+SET level = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap, equipped_slots
+`
+
+type UpdateCharacterLevelParams struct {
+	ID    uuid.UUID
+	Level int32
+}
+
+func (q *Queries) UpdateCharacterLevel(ctx context.Context, arg UpdateCharacterLevelParams) (Character, error) {
+	row := q.db.QueryRowContext(ctx, updateCharacterLevel, arg.ID, arg.Level)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Race,
+		&i.Class,
+		&i.Level,
+		&i.Experience,
+		&i.DrivingFate,
+		&i.BindingFate,
+		&i.Strength,
+		&i.Dexterity,
+		&i.Fortitude,
+		&i.Willpower,
+		&i.Alacrity,
+		&i.Wisdom,
+		&i.MaxHp,
+		&i.CurrentHp,
+		&i.MaxWp,
+		&i.CurrentWp,
+		&i.ActionPoints,
+		&i.TalentPointsAvailable,
+		&i.TalentsInvested,
+		&i.Inventory,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MaxAp,
+		&i.OvercapAp,
+		&i.EquippedSlots,
+	)
+	return i, err
+}
+
 const updateCharacterWP = `-- name: UpdateCharacterWP :exec
 UPDATE characters SET current_wp = $2 WHERE id = $1
 `
@@ -321,6 +468,55 @@ type UpdateCharacterWPParams struct {
 func (q *Queries) UpdateCharacterWP(ctx context.Context, arg UpdateCharacterWPParams) error {
 	_, err := q.db.ExecContext(ctx, updateCharacterWP, arg.ID, arg.CurrentWp)
 	return err
+}
+
+const updateCharacterXP = `-- name: UpdateCharacterXP :one
+UPDATE characters
+SET experience = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, user_id, name, race, class, level, experience, driving_fate, binding_fate, strength, dexterity, fortitude, willpower, alacrity, wisdom, max_hp, current_hp, max_wp, current_wp, action_points, talent_points_available, talents_invested, inventory, created_at, updated_at, max_ap, overcap_ap, equipped_slots
+`
+
+type UpdateCharacterXPParams struct {
+	ID         uuid.UUID
+	Experience int32
+}
+
+func (q *Queries) UpdateCharacterXP(ctx context.Context, arg UpdateCharacterXPParams) (Character, error) {
+	row := q.db.QueryRowContext(ctx, updateCharacterXP, arg.ID, arg.Experience)
+	var i Character
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Race,
+		&i.Class,
+		&i.Level,
+		&i.Experience,
+		&i.DrivingFate,
+		&i.BindingFate,
+		&i.Strength,
+		&i.Dexterity,
+		&i.Fortitude,
+		&i.Willpower,
+		&i.Alacrity,
+		&i.Wisdom,
+		&i.MaxHp,
+		&i.CurrentHp,
+		&i.MaxWp,
+		&i.CurrentWp,
+		&i.ActionPoints,
+		&i.TalentPointsAvailable,
+		&i.TalentsInvested,
+		&i.Inventory,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MaxAp,
+		&i.OvercapAp,
+		&i.EquippedSlots,
+	)
+	return i, err
 }
 
 const validateCharacterOwnership = `-- name: ValidateCharacterOwnership :one

@@ -55,3 +55,31 @@ UPDATE characters SET current_wp = $2 WHERE id = $1;
 
 -- name: ValidateCharacterOwnership :one
 SELECT id FROM characters WHERE id = $1 AND user_id = $2;
+
+-- name: UpdateCharacterXP :one
+UPDATE characters
+SET experience = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateCharacterLevel :one
+UPDATE characters
+SET level = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateCharacterInventory :one
+UPDATE characters
+SET inventory = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: UpdateCharacterEquippedSlots :one
+UPDATE characters
+SET equipped_slots = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;
