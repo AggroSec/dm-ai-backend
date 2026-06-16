@@ -19,7 +19,7 @@ func GetToolDefinitions() []Tool {
 			Type: "function",
 			Function: Function{
 				Name:        "end_combat",
-				Description: "Used to end a combat before victory/defeat conditions are met. Used for special narrative circumstances.",
+				Description: "Used to end a combat. Combat can be ended either by one side being wiped out, or by special narrative circumstances. Players can also attempt a check to flee from the battle.",
 				Parameters: Parameters{
 					Type: "object",
 					Properties: map[string]Property{
@@ -65,7 +65,7 @@ func GetToolDefinitions() []Tool {
 			Type: "function",
 			Function: Function{
 				Name:        "apply_damage",
-				Description: "Used to apply HP damage or WP damage to a combatant. Used strictly for lowering one of these values. In combat, you call this specifically after getting the results of any rolls, modifiers, etc. so you can calculate the damage amount and then call this function to apply it. You can also use this outside of combat for narrative purposes, but it's primarily designed for combat.",
+				Description: "Used to apply HP damage or WP damage to a combatant. Used strictly for lowering one of these values. In combat, you call this specifically after getting the results of any rolls, modifiers, etc. so you can calculate the damage amount and then call this function to apply it. You can also use this outside of combat for narrative purposes, but it's primarily designed for combat. If combat is active, this is not optional. NPCs do not take narrative damage, you keep track of that yourself.",
 				Parameters: Parameters{
 					Type: "object",
 					Properties: map[string]Property{
@@ -80,6 +80,10 @@ func GetToolDefinitions() []Tool {
 						"type": {
 							Type:        "string",
 							Description: "The type of damage to apply (e.g. 'hp', 'wp').",
+						},
+						"combat_id": {
+							Type:        "string",
+							Description: "The ID of the combat this damage applies to. Only optional for narrative purposes, if combat is active, supply the id.",
 						},
 						"source": {
 							Type:        "string",
@@ -115,7 +119,7 @@ func GetToolDefinitions() []Tool {
 			Type: "function",
 			Function: Function{
 				Name:        "validate_action",
-				Description: "Used to validate a player's skill/ability before it is executed in combat. supply the cost and server will validate if the player has the resources to perform the action and return a boolean. This is used to prevent players from performing actions they don't have the resources for and to help guide them towards valid actions. Will also deduct the resources if the action is valid so you don't have to worry about that part. For the associated cost, if there is none present just put 0 for the cost and it will validate based on the action alone. (e.g. 0 HP, 0 WP, 2 AP is an ability that just costs AP). you will process also need to validate an NPCs actions through this. For NPC combatants, continue taking actions until AP reaches 0. Always end NPC turn with at least a basic attack if no other action is available. Turn advances automatically when AP hits 0 for NPCs through this tool call, however finish up the rolls and damage/effect applying, etc before moving to the next combatants turn.",
+				Description: "Used to validate a player's skill/ability before it is executed in combat. supply the cost and server will validate if the player has the resources to perform the action and return a boolean or error. This is used to prevent players from performing actions they don't have the resources for and to help guide them towards valid actions. Will also deduct the resources if the action is valid so you don't have to worry about that part. For the associated cost, if there is none present just put 0 for the cost and it will validate based on the action alone. (e.g. 0 HP, 0 WP, 2 AP is an ability that just costs AP). you will process also need to validate an NPCs actions through this. For NPC combatants, continue taking actions until AP reaches 0. Always end NPC turn with at least a basic attack if no other action is available. Turn advances automatically when AP hits 0 for NPCs through this tool call, however finish up the rolls and damage/effect applying, etc before moving to the next combatants turn.",
 				Parameters: Parameters{
 					Type: "object",
 					Properties: map[string]Property{
@@ -268,7 +272,7 @@ func GetToolDefinitions() []Tool {
 			Type: "function",
 			Function: Function{
 				Name:        "apply_heal",
-				Description: "Used to increase HP or WP for a combatant. Used strictly for raising one of these values. In combat, you call this specifically after getting the results of any rolls, modifiers, etc. so you can calculate the heal amount and then call this function to apply it. You can also use this outside of combat for narrative purposes, but it's primarily designed for combat.",
+				Description: "Used to increase HP or WP for a combatant. Used strictly for raising one of these values. In combat, you call this specifically after getting the results of any rolls, modifiers, etc. so you can calculate the heal amount and then call this function to apply it. You can also use this outside of combat for narrative purposes, but it's primarily designed for combat. Include the combat_id argument if there is an active combat - NPCs specifically only heal in combat, keep up with the narrative yourself for when there is a combat initiated.",
 				Parameters: Parameters{
 					Type: "object",
 					Properties: map[string]Property{
@@ -283,6 +287,10 @@ func GetToolDefinitions() []Tool {
 						"type": {
 							Type:        "string",
 							Description: "The type of healing to apply (e.g. 'hp', 'wp').",
+						},
+						"combat_id": {
+							Type:        "string",
+							Description: "ID of the active combat if applicable.",
 						},
 						"source": {
 							Type:        "string",
@@ -323,9 +331,9 @@ func GetToolDefinitions() []Tool {
 							Description: "The ID of the character whose skills to retrieve.",
 						},
 						"talent_points": {
-							Type: "integer",
+							Type:        "integer",
 							Description: "The number of talent points available to invest. This is zero if they are not leveling up, 1 otherwise. Not an options argument as the function requires a number to get info.",
-						}
+						},
 					},
 					Required: []string{"character_id", "talent_points"},
 				},
@@ -360,7 +368,7 @@ func GetToolDefinitions() []Tool {
 			Type: "function",
 			Function: Function{
 				Name:        "equip_item",
-				Description: "Used to equip an item on a character. This is used for when a character wants to use an item that they have in their inventory. If used during combat, validate the action first for a cost of 1 AP",
+				Description: "Used to equip an item on a character. This is used for when a character wants to use an item that they have in their inventory. If used during combat, validate the action first for a cost of 1 AP, then supply the combat ID. Combat ID is optional otherwise.",
 				Parameters: Parameters{
 					Type: "object",
 					Properties: map[string]Property{
@@ -375,6 +383,10 @@ func GetToolDefinitions() []Tool {
 						"slot": {
 							Type:        "string",
 							Description: "The slot to equip the item in (e.g. 'head', 'body', 'legs', 'weapon'). This is used to determine where the item is equipped and what bonuses it provides.",
+						},
+						"combat_id": {
+							Type:        "string",
+							Description: "Optional argument, use when in combat, so that character is updated correctly during combat.",
 						},
 					},
 					Required: []string{"character_id", "item_id", "slot"},

@@ -194,15 +194,71 @@ func (d *Dispatcher) handleSkipTurn(ctx context.Context, args json.RawMessage) (
 }
 
 func (d *Dispatcher) handleValidateAction(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: validate_action")
+	type validateActionParams struct {
+		Action      string    `json:"action"`
+		HpCost      int       `json:"hp_cost"`
+		WpCost      int       `json:"wp_cost"`
+		ApCost      int       `json:"ap_cost"`
+		CombatantID uuid.UUID `json:"combatant_id"`
+		CombatID    uuid.UUID `json:"combat_id"`
+	}
+	var toolArgs validateActionParams
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	valid, err := game.ValidateAction(ctx, d.db, toolArgs.Action, toolArgs.HpCost, toolArgs.WpCost, toolArgs.ApCost, toolArgs.CombatantID, toolArgs.CombatID)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Action: %s validity is: %v", toolArgs.Action, valid), nil
 }
 
 func (d *Dispatcher) handleApplyDamage(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: apply_damage")
+	type applyDamageArgs struct {
+		Entity     uuid.UUID  `json:"entity"`
+		Amount     int        `json:"amount"`
+		DamageType string     `json:"type"`
+		CombatID   *uuid.UUID `json:"combat_id,omitempty"`
+		Source     string     `json:"source,omitempty"`
+	}
+	var toolArgs applyDamageArgs
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	err = game.ApplyDamage(ctx, d.db, toolArgs.Entity, toolArgs.Amount, toolArgs.DamageType, toolArgs.Source, toolArgs.CombatID)
+	if err != nil {
+		return "", err
+	}
+
+	logAIDispatcher(fmt.Sprintf("damage applied successfully to combatant: %v (-%d %s)", toolArgs.Entity, toolArgs.Amount, toolArgs.DamageType))
+	return fmt.Sprintf("damage applied successfully to combatant: %v (-%d %s)", toolArgs.Entity, toolArgs.Amount, toolArgs.DamageType), nil
 }
 
 func (d *Dispatcher) handleApplyHeal(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: apply_heal")
+	type applyHealArgs struct {
+		Entity   uuid.UUID  `json:"entity"`
+		Amount   int        `json:"amount"`
+		HealType string     `json:"type"`
+		CombatID *uuid.UUID `json:"combat_id,omitempty"`
+		Source   string     `json:"source,omitempty"`
+	}
+	var toolArgs applyHealArgs
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	err = game.ApplyHeal(ctx, d.db, toolArgs.Entity, toolArgs.Amount, toolArgs.HealType, toolArgs.Source, toolArgs.CombatID)
+	if err != nil {
+		return "", err
+	}
+
+	logAIDispatcher(fmt.Sprintf("heal applied successfully to combatant: %v (+%d %s)", toolArgs.Entity, toolArgs.Amount, toolArgs.HealType))
+	return fmt.Sprintf("heal applied successfully to combatant: %v (+%d %s)", toolArgs.Entity, toolArgs.Amount, toolArgs.HealType), nil
 }
 
 func (d *Dispatcher) handleApplyStatusEffect(ctx context.Context, args json.RawMessage) (string, error) {
@@ -413,9 +469,10 @@ func (d *Dispatcher) handleGiveItem(ctx context.Context, args json.RawMessage) (
 
 func (d *Dispatcher) handleEquipItem(ctx context.Context, args json.RawMessage) (string, error) {
 	type equipItemParams struct {
-		CharacterID uuid.UUID `json:"character_id"`
-		ItemID      string    `json:"item_id"`
-		Slot        string    `json:"slot"`
+		CharacterID uuid.UUID  `json:"character_id"`
+		ItemID      string     `json:"item_id"`
+		Slot        string     `json:"slot"`
+		CombatID    *uuid.UUID `json:"combat_id"`
 	}
 	var toolArgs equipItemParams
 	err := json.Unmarshal(args, &toolArgs)
@@ -427,7 +484,7 @@ func (d *Dispatcher) handleEquipItem(ctx context.Context, args json.RawMessage) 
 	if err != nil {
 		return "", err
 	}
-	updatedCharacterInfo, err := game.EquipItem(ctx, d.db, toolArgs.CharacterID, toolArgs.Slot, toolArgs.ItemID)
+	updatedCharacterInfo, err := game.EquipItem(ctx, d.db, toolArgs.CharacterID, toolArgs.Slot, toolArgs.ItemID, toolArgs.CombatID)
 	if err != nil {
 		return "", err
 	}
@@ -442,7 +499,24 @@ func (d *Dispatcher) handleEquipItem(ctx context.Context, args json.RawMessage) 
 }
 
 func (d *Dispatcher) handleRest(ctx context.Context, args json.RawMessage) (string, error) {
-	return "", fmt.Errorf("not implemented: rest")
+	type restParams struct {
+		CharacterID uuid.UUID `json:"character_id"`
+		RestType    string    `json:"rest_type"`
+		Location    string    `json:"location"`
+	}
+	var toolArgs restParams
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	err = game.CharacterRest(ctx, d.db, toolArgs.CharacterID, toolArgs.RestType)
+	if err != nil {
+		return "", err
+	}
+
+	logAIDispatcher(fmt.Sprintf("Character %v has successfully had a %s rest at %s.", toolArgs.CharacterID, toolArgs.RestType, toolArgs.Location))
+	return fmt.Sprintf("Character %v has successfully had a %s rest at %s.", toolArgs.CharacterID, toolArgs.RestType, toolArgs.Location), nil
 }
 
 func logAIDispatcher(msg string) {

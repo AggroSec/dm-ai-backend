@@ -88,7 +88,7 @@ func RemoveItem(ctx context.Context, db *database.Queries, characterID uuid.UUID
 }
 
 // EquipItem equips an item from the character's inventory to the specified slot and persists to DB.
-func EquipItem(ctx context.Context, db *database.Queries, characterID uuid.UUID, slot, itemID string) (CharacterInfo, error) {
+func EquipItem(ctx context.Context, db *database.Queries, characterID uuid.UUID, slot, itemID string, combatID *uuid.UUID) (CharacterInfo, error) {
 	dbChar, err := db.GetCharacterByID(ctx, characterID)
 	if err != nil {
 		return CharacterInfo{}, fmt.Errorf("failed to get character: %w", err)
@@ -154,6 +154,22 @@ func EquipItem(ctx context.Context, db *database.Queries, characterID uuid.UUID,
 	})
 	if err != nil {
 		return CharacterInfo{}, fmt.Errorf("failed to update equipped slots: %w", err)
+	}
+
+	if combatID != nil {
+		session, err := GetActiveCombatSession(ctx, db, *combatID)
+		if err != nil {
+			return CharacterInfo{}, fmt.Errorf("failed to get combat session: %w", err)
+		}
+		for i, c := range session.Combatants {
+			if c.ID == characterID {
+				session.Combatants[i].EquippedSlots = equippedSlots
+				break
+			}
+		}
+		if err := saveCombatState(ctx, db, &session); err != nil {
+			return CharacterInfo{}, fmt.Errorf("failed to save combat state: %w", err)
+		}
 	}
 
 	return GetCharacterInfo(ctx, db, characterID)

@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"sort"
+	"strings"
 
 	"github.com/AggroSec/dm-ai-backend/internal/database"
 	"github.com/google/uuid"
@@ -172,11 +174,14 @@ func AdvanceTurn(ctx context.Context, sessionID uuid.UUID, db *database.Queries)
 
 	StartTurn(&session)
 
-	saveCombatState(ctx, db, &session)
+	if err := saveCombatState(ctx, db, &session); err != nil {
+		return CombatSession{}, err
+	}
 
 	return session, nil
 }
 
+// this function may be replaced by validate action, with the AI handling skill resolution.
 func ProcessAction(ctx context.Context, db *database.Queries, sessionID, actorID uuid.UUID, actionType string, target uuid.UUID) (CombatSession, error) {
 	session, err := GetActiveCombatSession(ctx, db, sessionID)
 	if err != nil {
@@ -393,4 +398,151 @@ func saveCombatState(ctx context.Context, db *database.Queries, session *CombatS
 		Round:       int32(session.Round),
 	})
 	return err
+}
+
+func ApplyDamage(ctx context.Context, db *database.Queries, entity uuid.UUID, amount int, damageType, source string, combatID *uuid.UUID) error {
+	if combatID != nil {
+		combatSession, err := GetActiveCombatSession(ctx, db, *combatID)
+		if err != nil {
+			return err
+		}
+		for i, c := range combatSession.Combatants {
+			if c.ID == entity {
+				switch strings.ToLower(damageType) {
+				case "hp":
+					combatSession.Combatants[i].HP -= amount
+					if err := saveCombatState(ctx, db, &combatSession); err != nil {
+						return err
+					}
+				case "wp":
+					combatSession.Combatants[i].WP -= amount
+					if err := saveCombatState(ctx, db, &combatSession); err != nil {
+						return err
+					}
+				default:
+					return fmt.Errorf("invalid damage type: %s", damageType)
+				}
+				return nil
+			}
+		}
+	} else {
+		character, err := db.GetCharacterByID(ctx, entity)
+		if err != nil {
+			return err
+		}
+		switch strings.ToLower(damageType) {
+		case "hp":
+			currentHP := character.CurrentHp
+			currentHP -= int32(amount)
+			db.UpdateCharacterHP(ctx, database.UpdateCharacterHPParams{
+				ID:        entity,
+				CurrentHp: currentHP,
+			})
+		case "wp":
+			currentWP := character.CurrentWp
+			currentWP -= int32(amount)
+			db.UpdateCharacterWP(ctx, database.UpdateCharacterWPParams{
+				ID:        entity,
+				CurrentWp: currentWP,
+			})
+		default:
+			return fmt.Errorf("invalid damage type: %s", damageType)
+		}
+		return nil
+	}
+	return fmt.Errorf("failed to apply damage: error unknown")
+}
+
+func ApplyHeal(ctx context.Context, db *database.Queries, entity uuid.UUID, amount int, healType, source string, combatID *uuid.UUID) error {
+	if combatID != nil {
+		combatSession, err := GetActiveCombatSession(ctx, db, *combatID)
+		if err != nil {
+			return err
+		}
+		for i, c := range combatSession.Combatants {
+			if c.ID == entity {
+				switch strings.ToLower(healType) {
+				case "hp":
+					combatSession.Combatants[i].HP += amount
+					if combatSession.Combatants[i].HP > combatSession.Combatants[i].MaxHP {
+						combatSession.Combatants[i].HP = combatSession.Combatants[i].MaxHP
+					}
+					if err := saveCombatState(ctx, db, &combatSession); err != nil {
+						return err
+					}
+				case "wp":
+					combatSession.Combatants[i].WP += amount
+					if combatSession.Combatants[i].WP > combatSession.Combatants[i].MaxWP {
+						combatSession.Combatants[i].WP = combatSession.Combatants[i].MaxWP
+					}
+					if err := saveCombatState(ctx, db, &combatSession); err != nil {
+						return err
+					}
+				default:
+					return fmt.Errorf("invalid damage type: %s", healType)
+				}
+				return nil
+			}
+		}
+	} else {
+		character, err := db.GetCharacterByID(ctx, entity)
+		if err != nil {
+			return err
+		}
+		switch strings.ToLower(healType) {
+		case "hp":
+			currentHP := character.CurrentHp
+			currentHP += int32(amount)
+			if currentHP > character.MaxHp {
+				currentHP = character.MaxHp
+			}
+			db.UpdateCharacterHP(ctx, database.UpdateCharacterHPParams{
+				ID:        entity,
+				CurrentHp: currentHP,
+			})
+		case "wp":
+			currentWP := character.CurrentWp
+			currentWP += int32(amount)
+			if currentWP > character.MaxWp {
+				currentWP = character.MaxWp
+			}
+			db.UpdateCharacterWP(ctx, database.UpdateCharacterWPParams{
+				ID:        entity,
+				CurrentWp: currentWP,
+			})
+		default:
+			return fmt.Errorf("invalid damage type: %s", healType)
+		}
+		return nil
+	}
+	return fmt.Errorf("failed to apply damage: error unknown")
+}
+
+func ValidateAction(ctx context.Context, db *database.Queries, action string, hpCost, wpCost, apCost int, combatantID, combatID uuid.UUID) (bool, error) {
+	combatSession, err := GetActiveCombatSession(ctx, db, combatID)
+	if err != nil {
+		return false, err
+	}
+
+	valid := true
+	for i, c := range combatSession.Combatants {
+		if c.ID == combatantID {
+			if c.HP <= hpCost || c.WP < wpCost || c.AP < apCost {
+				valid = false
+			} else {
+				combatSession.Combatants[i].HP -= hpCost
+				combatSession.Combatants[i].WP -= wpCost
+				combatSession.Combatants[i].AP -= apCost
+				if err := saveCombatState(ctx, db, &combatSession); err != nil {
+					return false, err
+				}
+			}
+		}
+	}
+
+	if valid {
+		return valid, nil
+	}
+
+	return valid, fmt.Errorf("did not pass cost check")
 }

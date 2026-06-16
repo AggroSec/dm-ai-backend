@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/AggroSec/dm-ai-backend/internal/database"
 	"github.com/google/uuid"
@@ -231,4 +232,71 @@ func ApplyCharacterUpdates(ctx context.Context, db *database.Queries, characterI
 	}
 
 	return GetCharacterInfo(ctx, db, characterID)
+}
+
+func CharacterRest(ctx context.Context, db *database.Queries, characterID uuid.UUID, restType string) error {
+	character, err := db.GetCharacterByID(ctx, characterID)
+	if err != nil {
+		return err
+	}
+
+	switch strings.ToLower(restType) {
+	case "short":
+		missingHP := character.MaxHp - character.CurrentHp
+		missingWP := character.MaxWp - character.CurrentWp
+		HPHealing := missingHP / 2
+		WPHealing := missingWP / 2
+		err = db.UpdateCharacterHP(ctx, database.UpdateCharacterHPParams{
+			ID:        characterID,
+			CurrentHp: character.CurrentHp + HPHealing,
+		})
+		if err != nil {
+			return err
+		}
+		err = db.UpdateCharacterWP(ctx, database.UpdateCharacterWPParams{
+			ID:        characterID,
+			CurrentWp: character.CurrentWp + WPHealing,
+		})
+		if err != nil {
+			return err
+		}
+		statusEffects, err := db.GetStatusEffectsByID(ctx, characterID)
+		if err != nil {
+			return err
+		}
+		for _, effect := range statusEffects {
+			err = RemoveStatusEffect(ctx, db, characterID, effect.ID, nil)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	case "long":
+		err = db.UpdateCharacterHP(ctx, database.UpdateCharacterHPParams{
+			ID:        characterID,
+			CurrentHp: character.MaxHp,
+		})
+		if err != nil {
+			return err
+		}
+		err = db.UpdateCharacterWP(ctx, database.UpdateCharacterWPParams{
+			ID:        characterID,
+			CurrentWp: character.MaxWp,
+		})
+		if err != nil {
+			return err
+		}
+		statusEffects, err := db.GetStatusEffectsByID(ctx, characterID)
+		if err != nil {
+			return err
+		}
+		for _, effect := range statusEffects {
+			err = RemoveStatusEffect(ctx, db, characterID, effect.ID, nil)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return fmt.Errorf("not a valid rest type")
 }
