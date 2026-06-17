@@ -371,13 +371,16 @@ func (d *Dispatcher) handleAwardXP(ctx context.Context, args json.RawMessage) (s
 }
 
 func (d *Dispatcher) handleGetCharacter(ctx context.Context, args json.RawMessage) (string, error) {
-	var characterID uuid.UUID
-	err := json.Unmarshal(args, &characterID)
+	type getCharacterParams struct {
+		CharacterID uuid.UUID `json:"character_id"`
+	}
+	var toolArgs getCharacterParams
+	err := json.Unmarshal(args, &toolArgs)
 	if err != nil {
 		return "", err
 	}
 
-	characterInfo, err := game.GetCharacterInfo(ctx, d.db, characterID)
+	characterInfo, err := game.GetCharacterInfo(ctx, d.db, toolArgs.CharacterID)
 	if err != nil {
 		return "", err
 	}
@@ -417,7 +420,7 @@ func (d *Dispatcher) handleGetSkills(ctx context.Context, args json.RawMessage) 
 		return "", err
 	}
 
-	logAIDispatcher("Character %s(%v) skills retrieves successfully")
+	logAIDispatcher(fmt.Sprintf("Character %s(%v) skills retrieves successfully", characterInfo.Name, characterInfo.ID))
 	return string(jsonData), nil
 }
 
@@ -438,6 +441,9 @@ func (d *Dispatcher) handleUpdateCharacter(ctx context.Context, args json.RawMes
 	}
 
 	jsonData, err := json.Marshal(updatedCharacter)
+	if err != nil {
+		return "", err
+	}
 
 	logAIDispatcher(fmt.Sprintf("Character %s(%v) was updated successfully", updatedCharacter.Name, updatedCharacter.ID))
 	return fmt.Sprintf("character updated successfully: %s", string(jsonData)), nil

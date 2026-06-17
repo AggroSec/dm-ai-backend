@@ -181,7 +181,8 @@ func AdvanceTurn(ctx context.Context, sessionID uuid.UUID, db *database.Queries)
 	return session, nil
 }
 
-// this function may be replaced by validate action, with the AI handling skill resolution.
+// ProcessAction and CheckCombatEnd are retained for internal combat loop testing.
+// In production, the AI handles combat resolution via the tool system.
 func ProcessAction(ctx context.Context, db *database.Queries, sessionID, actorID uuid.UUID, actionType string, target uuid.UUID) (CombatSession, error) {
 	session, err := GetActiveCombatSession(ctx, db, sessionID)
 	if err != nil {
@@ -434,17 +435,23 @@ func ApplyDamage(ctx context.Context, db *database.Queries, entity uuid.UUID, am
 		case "hp":
 			currentHP := character.CurrentHp
 			currentHP -= int32(amount)
-			db.UpdateCharacterHP(ctx, database.UpdateCharacterHPParams{
+			err = db.UpdateCharacterHP(ctx, database.UpdateCharacterHPParams{
 				ID:        entity,
 				CurrentHp: currentHP,
 			})
+			if err != nil {
+				return err
+			}
 		case "wp":
 			currentWP := character.CurrentWp
 			currentWP -= int32(amount)
-			db.UpdateCharacterWP(ctx, database.UpdateCharacterWPParams{
+			err = db.UpdateCharacterWP(ctx, database.UpdateCharacterWPParams{
 				ID:        entity,
 				CurrentWp: currentWP,
 			})
+			if err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("invalid damage type: %s", damageType)
 		}
@@ -496,20 +503,26 @@ func ApplyHeal(ctx context.Context, db *database.Queries, entity uuid.UUID, amou
 			if currentHP > character.MaxHp {
 				currentHP = character.MaxHp
 			}
-			db.UpdateCharacterHP(ctx, database.UpdateCharacterHPParams{
+			err = db.UpdateCharacterHP(ctx, database.UpdateCharacterHPParams{
 				ID:        entity,
 				CurrentHp: currentHP,
 			})
+			if err != nil {
+				return err
+			}
 		case "wp":
 			currentWP := character.CurrentWp
 			currentWP += int32(amount)
 			if currentWP > character.MaxWp {
 				currentWP = character.MaxWp
 			}
-			db.UpdateCharacterWP(ctx, database.UpdateCharacterWPParams{
+			err = db.UpdateCharacterWP(ctx, database.UpdateCharacterWPParams{
 				ID:        entity,
 				CurrentWp: currentWP,
 			})
+			if err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("invalid damage type: %s", healType)
 		}
@@ -536,6 +549,7 @@ func ValidateAction(ctx context.Context, db *database.Queries, action string, hp
 				if err := saveCombatState(ctx, db, &combatSession); err != nil {
 					return false, err
 				}
+				break
 			}
 		}
 	}

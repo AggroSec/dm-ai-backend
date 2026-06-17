@@ -146,7 +146,7 @@ func RemoveStatusEffect(ctx context.Context, db *database.Queries, characterID u
 				if err != nil {
 					return err
 				}
-
+				return nil
 			}
 		}
 	}
