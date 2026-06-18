@@ -1,0 +1,163 @@
+package server
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/AggroSec/dm-ai-backend/internal/ai"
+	"github.com/AggroSec/dm-ai-backend/internal/database"
+	"github.com/google/uuid"
+)
+
+type MsgRequest struct {
+	Message string `json:"message"`
+}
+
+type actionRequest struct {
+	CampaignID  uuid.UUID  `json:"campaign_id"`
+	CharacterID uuid.UUID  `json:"character_id"`
+	CombatID    *uuid.UUID `json:"combat_id,omitempty"`
+	Message     string     `json:"message"`
+}
+
+type actionResponse struct {
+	Message  string     `json:"message"`
+	CombatID *uuid.UUID `json:"combat_id,omitempty"`
+}
+
+func (s *Server) handlerAITest(w http.ResponseWriter, r *http.Request) {
+	var req MsgRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	msg := ai.Message{
+		Role:    "user",
+		Content: req.Message,
+	}
+	systemPrompt := ai.Message{
+		Role:    "system",
+		Content: "Respond with only 3-4 sentences, as if you are a DM narrating the beginning setting of a campaign. The user input will be a theme.",
+	}
+	resp, err := s.aiClient.Chat(r.Context(), []ai.Message{systemPrompt, msg})
+	if err != nil {
+		logAIError("AI chat error", err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	logAIInfo("test chat successful")
+	respondJSON(w, http.StatusOK, map[string]string{"response": resp})
+}
+
+func (s *Server) handlerAITestTools(w http.ResponseWriter, r *http.Request) {
+	var req MsgRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	msg := ai.Message{
+		Role:    "user",
+		Content: req.Message,
+	}
+	systemPrompt := ai.Message{
+		Role:    "system",
+		Content: "You are a test assistant. When the user asks you to roll a dice, call the request_roll tool",
+	}
+	resp, _, err := s.aiClient.ChatWithTools(r.Context(), []ai.Message{systemPrompt, msg}, ai.GetToolDefinitions(), nil)
+	if err != nil {
+		logAIError("AI chat error", err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	logAIInfo("test chat successful")
+	respondJSON(w, http.StatusOK, map[string]string{"response": resp})
+}
+
+func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
+	var req actionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	playerMsg := ai.Message{
+		Role:    "user",
+		Content: req.Message,
+	}
+
+	msgSequence, err := s.db.GetNextSequence(r.Context(), req.CampaignID)
+	if err != nil {
+		logAIError("could not get next message sequence", err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	_, err = s.db.InsertMessage(r.Context(), database.InsertMessageParams{
+		CampaignID: req.CampaignID,
+		Role:       playerMsg.Role,
+		Content:    playerMsg.Content,
+		Sequence:   msgSequence,
+		ToolCalls:  []byte("[]"),
+	})
+	if err != nil {
+		logAIError("failed to add player message to db", err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	var aiContext []ai.Message
+	if req.CombatID != nil {
+		aiBuild, err := ai.BuildCombatContext(r.Context(), s.db, s.cfg, req.CampaignID, req.CharacterID, *req.CombatID, playerMsg.Content)
+		if err != nil {
+			logAIError("failed to built combat context", err)
+			respondError(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		for _, msg := range aiBuild {
+			aiContext = append(aiContext, msg)
+		}
+	} else {
+		aiBuild, err := ai.BuildNarrativeContext(r.Context(), s.db, s.cfg, req.CampaignID, req.CharacterID, playerMsg.Content)
+		if err != nil {
+			logAIError("failed to built narrative context", err)
+			respondError(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		for _, msg := range aiBuild {
+			aiContext = append(aiContext, msg)
+		}
+	}
+
+	responseCombatID := req.CombatID
+
+	dispatcher := ai.NewDispatcher(s.db, s.cfg, req.CampaignID)
+	resp, newCombatID, err := s.aiClient.ChatWithTools(r.Context(), aiContext, ai.GetToolDefinitions(), dispatcher)
+	if err != nil {
+		logAIError("Chat call failed", err)
+	}
+	if newCombatID != nil {
+		responseCombatID = newCombatID
+	}
+
+	aiResponse := actionResponse{
+		Message:  resp,
+		CombatID: responseCombatID,
+	}
+
+	logAIInfo(fmt.Sprintf("request successfully processed for character: %v", req.CharacterID))
+	respondJSON(w, http.StatusOK, aiResponse)
+}
+
+func logAIError(msg string, err error) {
+	log.Printf(" | [DM-AI] %s: %v", msg, err)
+}
+
+func logAIInfo(msg string) {
+	log.Printf(" | [DM-AI] %s", msg)
+}

@@ -11,6 +11,8 @@ import (
 
 	"github.com/AggroSec/dm-ai-backend/internal/config"
 	"github.com/AggroSec/dm-ai-backend/internal/database"
+	"github.com/AggroSec/dm-ai-backend/internal/game"
+	"github.com/google/uuid"
 )
 
 const (
@@ -137,7 +139,7 @@ func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 	return chatResponse.Choices[0].Message.Content, nil
 }
 
-func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool) (string, error) {
+func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool, dispatcher *Dispatcher) (string, *uuid.UUID, error) {
 	messages := msgs
 
 	for i := 0; i < maxIterations; i++ {
@@ -150,12 +152,12 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 
 		jsonData, err := json.Marshal(chatRequest)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 
 		req, err := http.NewRequestWithContext(ctx, "POST", c.URL, bytes.NewBuffer(jsonData))
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+c.APIKey)
@@ -164,17 +166,17 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			return "", fmt.Errorf("openrouter returned status %d: %s", resp.StatusCode, string(body))
+			return "", nil, fmt.Errorf("openrouter returned status %d: %s", resp.StatusCode, string(body))
 		}
 
 		var chatResponse ChatResponse
 		if err := json.NewDecoder(resp.Body).Decode(&chatResponse); err != nil {
-			return "", err
+			return "", nil, err
 		}
 
 		resp.Body.Close()
@@ -182,27 +184,66 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 		log.Printf(" | [DEBUG] finish_reason: %s", chatResponse.Choices[0].FinishReason)
 		log.Printf(" | [DEBUG] tool_calls: %v", chatResponse.Choices[0].Message.ToolCalls)
 
+		var combatID *uuid.UUID
 		if chatResponse.Choices[0].FinishReason == "stop" {
-			return chatResponse.Choices[0].Message.Content, nil
+			msg := chatResponse.Choices[0].Message.Content
+			nextSequence, err := dispatcher.db.GetNextSequence(ctx, dispatcher.campaignID)
+			if err != nil {
+				return "", nil, fmt.Errorf("failed to get message sequence: %v", err)
+			}
+			dispatcher.db.InsertMessage(ctx, database.InsertMessageParams{
+				CampaignID: dispatcher.campaignID,
+				Role:       "assistant",
+				Content:    msg,
+				ToolCalls:  []byte("[]"),
+				Sequence:   nextSequence,
+			})
+			return msg, combatID, nil
 		} else if chatResponse.Choices[0].FinishReason == "tool_calls" {
 			messages = append(messages, chatResponse.Choices[0].Message)
 			for _, toolCall := range chatResponse.Choices[0].Message.ToolCalls {
 				toolLog := fmt.Sprintf("AI called tool %v with %v parameters", toolCall.Function.Name, toolCall.Function.Arguments)
 				logInternalAI(toolLog)
-				result, err := ExecuteToolCall(ctx, c.db, toolCall)
+				result, err := dispatcher.ExecuteToolCall(ctx, toolCall)
 				if err != nil {
 					result = fmt.Sprintf("tool execution failed Name: %v, Error: %v", toolCall.Function.Name, err.Error())
 				}
-				messages = append(messages, Message{
+				resultMsg := Message{
 					Role:       "tool",
 					ToolCallID: toolCall.ID,
 					Content:    result,
+				}
+				jsonToolCall, err := json.Marshal(toolCall)
+				if err != nil {
+					result = fmt.Sprintf("failed to marshal tool call to json: %v", err)
+				}
+				nextSequence, err := dispatcher.db.GetNextSequence(ctx, dispatcher.campaignID)
+				_, err = dispatcher.db.InsertMessage(ctx, database.InsertMessageParams{
+					CampaignID: dispatcher.campaignID,
+					Role:       "tool",
+					Content:    resultMsg.Content,
+					ToolCalls:  jsonToolCall,
+					ToolCallID: resultMsg.ToolCallID,
+					Sequence:   nextSequence,
 				})
+				if err != nil {
+					result = fmt.Sprintf("failed to add tool call message to db: %v", err)
+				}
+				if toolCall.Function.Name == "start_combat" {
+					var combatSession game.CombatSession
+					if err := json.Unmarshal([]byte(result), &combatSession); err == nil {
+						combatID = &combatSession.ID
+					} else {
+						result = fmt.Sprintf("failed to unmarshal combat session: %v", err)
+					}
+				}
+				messages = append(messages, resultMsg)
+				logInternalAI("tool call finished")
 			}
 			continue
 		}
 	}
-	return "", fmt.Errorf("too many AI iterations.")
+	return "", nil, fmt.Errorf("too many AI iterations.")
 }
 
 func logInternalAI(msg string) {
