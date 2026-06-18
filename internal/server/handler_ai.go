@@ -16,10 +16,11 @@ type MsgRequest struct {
 }
 
 type actionRequest struct {
-	CampaignID  uuid.UUID  `json:"campaign_id"`
-	CharacterID uuid.UUID  `json:"character_id"`
-	CombatID    *uuid.UUID `json:"combat_id,omitempty"`
-	Message     string     `json:"message"`
+	CampaignID        uuid.UUID  `json:"campaign_id"`
+	CharacterID       uuid.UUID  `json:"character_id"`
+	CombatID          *uuid.UUID `json:"combat_id,omitempty"`
+	Message           string     `json:"message"`
+	CharacterCreation bool       `json:"character_creation,omitempty"`
 }
 
 type actionResponse struct {
@@ -112,7 +113,22 @@ func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var aiContext []ai.Message
-	if req.CombatID != nil {
+	if req.CharacterCreation {
+		character, err := s.db.GetCharacterByID(r.Context(), req.CharacterID)
+		if err != nil {
+			logAIError("failed to retrieve character for character creation", err)
+			respondError(w, http.StatusInternalServerError, "internal server error")
+		}
+		aiBuild, err := ai.BuildCharacterCreationContext(s.cfg, r.Context(), s.db, character, req.CampaignID, playerMsg.Content)
+		if err != nil {
+			logAIError("failed to built character creation context", err)
+			respondError(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		for _, msg := range aiBuild {
+			aiContext = append(aiContext, msg)
+		}
+	} else if req.CombatID != nil {
 		aiBuild, err := ai.BuildCombatContext(r.Context(), s.db, s.cfg, req.CampaignID, req.CharacterID, *req.CombatID, playerMsg.Content)
 		if err != nil {
 			logAIError("failed to built combat context", err)

@@ -124,6 +124,14 @@ type Message struct {
 	CreatedAt  time.Time
 }
 
+type RefreshToken struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Token     string
+	ExpiresAt time.Time
+	CreatedAt time.Time
+}
+
 type StatusEffect struct {
 	ID          uuid.UUID
 	CharacterID uuid.UUID

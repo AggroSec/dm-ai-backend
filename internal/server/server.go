@@ -47,6 +47,8 @@ func (s *Server) RegisterRoutes() http.Handler {
 	mux.HandleFunc("POST /campaigns", s.requireAuth(s.handlerCreateCampaign))
 	mux.HandleFunc("GET /campaigns", s.requireAuth(s.handlerGetCampaigns))
 	mux.HandleFunc("POST /ai/action", s.requireAuth(s.handlerAIAction))
+	mux.HandleFunc("POST /auth/refresh", s.handlerRefreshJWT)
+	mux.HandleFunc("POST /auth/logout", s.HandlerLogout)
 	return mux
 }
 

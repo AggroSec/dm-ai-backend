@@ -27,8 +27,13 @@ type registerResponse struct {
 }
 
 type authResponse struct {
-	JWTToken string `json:"token"`
-	UserID   string `json:"user_id"`
+	JWTToken     string `json:"token"`
+	UserID       string `json:"user_id"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type requestToken struct {
+	RefreshToken string `json:"refresh_token"`
 }
 
 func (s *Server) handlerRegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -96,9 +101,76 @@ func (s *Server) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	refreshToken, err := auth.GenerateRefreshToken()
+	if err != nil {
+		log.Printf(" | failed to generate refresh token for user: %v(%v), err: %v", user.Username, user.ID, err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	_, err = s.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		UserID:    user.ID,
+		Token:     refreshToken,
+		ExpiresAt: time.Now().Add(s.cfg.JWTRefreshExpiry),
+	})
+
 	respondJSON(w, http.StatusOK, authResponse{
-		JWTToken: jwtToken,
-		UserID:   user.ID.String(),
+		JWTToken:     jwtToken,
+		UserID:       user.ID.String(),
+		RefreshToken: refreshToken,
 	})
 	log.Printf(" | jwt created successfully for: %v(%v)", user.Username, user.ID)
+}
+
+func (s *Server) handlerRefreshJWT(w http.ResponseWriter, r *http.Request) {
+	var req requestToken
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		log.Printf(" | failed to decode json: %v", err)
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	refreshToken, err := s.db.GetRefreshToken(r.Context(), req.RefreshToken)
+	if err != nil {
+		log.Printf(" | failed to retrieve refresh token from db: %v", err)
+		respondError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	if time.Now().After(refreshToken.ExpiresAt) {
+		log.Print(" | token is expired")
+		respondError(w, http.StatusUnauthorized, "refresh token expired")
+		return
+	}
+
+	newJWT, err := auth.GenerateJWT(refreshToken.UserID.String(), s.cfg.JWTSecret, s.cfg.JWTExpiry)
+	if err != nil {
+		log.Printf(" | failed to generate jwt for user - err: %v", err)
+		respondError(w, http.StatusInternalServerError, "token generation failed")
+		return
+	}
+
+	type refreshResponse struct {
+		NewJWT string `json:"jwt"`
+	}
+	respondJSON(w, http.StatusOK, refreshResponse{NewJWT: newJWT})
+}
+
+func (s *Server) HandlerLogout(w http.ResponseWriter, r *http.Request) {
+	var req requestToken
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		log.Printf(" | failed to decode json: %v", err)
+		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	err = s.db.DeleteRefreshToken(r.Context(), req.RefreshToken)
+	if err != nil {
+		log.Printf(" | failed to delete refresh token: %v", err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, "logged out successfully")
 }

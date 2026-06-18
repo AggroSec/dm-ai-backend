@@ -141,5 +141,10 @@ IMPORTANT RULES
 - Never present fates outside the character's class domain
 - Never exceed 10 bonus stat points during distribution
 - Apply all mechanical changes using tools — do not describe changes without making them
-- Do not move to the next step until the current step is fully resolved and confirmed`
+- Do not move to the next step until the current step is fully resolved and confirmed
+
+Once character creation is done, prompt the player to confirm
+
+When the player confirms their character is complete, end your response with exactly:
+CHARACTER_CREATION_COMPLETE`
 }
