@@ -141,6 +141,7 @@ func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 
 func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool, dispatcher *Dispatcher) (string, *uuid.UUID, error) {
 	messages := msgs
+	var combatID *uuid.UUID
 
 	for i := 0; i < maxIterations; i++ {
 		chatRequest := ChatRequest{
@@ -169,6 +170,8 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 			return "", nil, err
 		}
 
+		defer resp.Body.Close()
+
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
 			return "", nil, fmt.Errorf("openrouter returned status %d: %s", resp.StatusCode, string(body))
@@ -179,12 +182,9 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 			return "", nil, err
 		}
 
-		resp.Body.Close()
-
 		log.Printf(" | [DEBUG] finish_reason: %s", chatResponse.Choices[0].FinishReason)
 		log.Printf(" | [DEBUG] tool_calls: %v", chatResponse.Choices[0].Message.ToolCalls)
 
-		var combatID *uuid.UUID
 		if chatResponse.Choices[0].FinishReason == "stop" {
 			msg := chatResponse.Choices[0].Message.Content
 			nextSequence, err := dispatcher.db.GetNextSequence(ctx, dispatcher.campaignID)
@@ -200,6 +200,22 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 			})
 			return msg, combatID, nil
 		} else if chatResponse.Choices[0].FinishReason == "tool_calls" {
+			assistantMsg := chatResponse.Choices[0].Message
+			jsonToolCalls, err := json.Marshal(assistantMsg.ToolCalls)
+			if err != nil {
+				return "", nil, err
+			}
+			nextSequence, err := dispatcher.db.GetNextSequence(ctx, dispatcher.campaignID)
+			if err != nil {
+				return "", nil, err
+			}
+			dispatcher.db.InsertMessage(ctx, database.InsertMessageParams{
+				CampaignID: dispatcher.campaignID,
+				Role:       "assistant",
+				Content:    assistantMsg.Content,
+				ToolCalls:  jsonToolCalls,
+				Sequence:   nextSequence,
+			})
 			messages = append(messages, chatResponse.Choices[0].Message)
 			for _, toolCall := range chatResponse.Choices[0].Message.ToolCalls {
 				toolLog := fmt.Sprintf("AI called tool %v with %v parameters", toolCall.Function.Name, toolCall.Function.Arguments)
@@ -213,11 +229,14 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 					ToolCallID: toolCall.ID,
 					Content:    result,
 				}
-				jsonToolCall, err := json.Marshal(toolCall)
+				jsonToolCall, err := json.Marshal([]ToolCall{toolCall})
 				if err != nil {
 					result = fmt.Sprintf("failed to marshal tool call to json: %v", err)
 				}
 				nextSequence, err := dispatcher.db.GetNextSequence(ctx, dispatcher.campaignID)
+				if err != nil {
+					result = fmt.Sprintf("failed to get message sequence: %v", err)
+				}
 				_, err = dispatcher.db.InsertMessage(ctx, database.InsertMessageParams{
 					CampaignID: dispatcher.campaignID,
 					Role:       "tool",

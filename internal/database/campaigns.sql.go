@@ -15,7 +15,7 @@ import (
 const createCampaign = `-- name: CreateCampaign :one
 INSERT INTO campaigns (name, owner_id, theme)
 VALUES ($1, $2, $3)
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party, character_creation_complete
 `
 
 type CreateCampaignParams struct {
@@ -39,12 +39,13 @@ func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) 
 		&i.Status,
 		&i.SummarizedThrough,
 		&i.Party,
+		&i.CharacterCreationComplete,
 	)
 	return i, err
 }
 
 const getCampaign = `-- name: GetCampaign :one
-SELECT id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party FROM campaigns
+SELECT id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party, character_creation_complete FROM campaigns
 WHERE id = $1
 `
 
@@ -63,12 +64,13 @@ func (q *Queries) GetCampaign(ctx context.Context, id uuid.UUID) (Campaign, erro
 		&i.Status,
 		&i.SummarizedThrough,
 		&i.Party,
+		&i.CharacterCreationComplete,
 	)
 	return i, err
 }
 
 const getCampaignsByOwner = `-- name: GetCampaignsByOwner :many
-SELECT id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party FROM campaigns
+SELECT id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party, character_creation_complete FROM campaigns
 WHERE owner_id = $1
 ORDER BY created_at DESC
 `
@@ -94,6 +96,7 @@ func (q *Queries) GetCampaignsByOwner(ctx context.Context, ownerID uuid.UUID) ([
 			&i.Status,
 			&i.SummarizedThrough,
 			&i.Party,
+			&i.CharacterCreationComplete,
 		); err != nil {
 			return nil, err
 		}
@@ -108,12 +111,45 @@ func (q *Queries) GetCampaignsByOwner(ctx context.Context, ownerID uuid.UUID) ([
 	return items, nil
 }
 
+const setCharacterCreationComplete = `-- name: SetCharacterCreationComplete :one
+UPDATE campaigns
+SET character_creation_complete = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party, character_creation_complete
+`
+
+type SetCharacterCreationCompleteParams struct {
+	ID                        uuid.UUID
+	CharacterCreationComplete bool
+}
+
+func (q *Queries) SetCharacterCreationComplete(ctx context.Context, arg SetCharacterCreationCompleteParams) (Campaign, error) {
+	row := q.db.QueryRowContext(ctx, setCharacterCreationComplete, arg.ID, arg.CharacterCreationComplete)
+	var i Campaign
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Theme,
+		&i.NarrativeSummary,
+		&i.DmNotes,
+		&i.Status,
+		&i.SummarizedThrough,
+		&i.Party,
+		&i.CharacterCreationComplete,
+	)
+	return i, err
+}
+
 const updateCampaignDMNotes = `-- name: UpdateCampaignDMNotes :one
 UPDATE campaigns
 SET dm_notes = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party, character_creation_complete
 `
 
 type UpdateCampaignDMNotesParams struct {
@@ -136,6 +172,7 @@ func (q *Queries) UpdateCampaignDMNotes(ctx context.Context, arg UpdateCampaignD
 		&i.Status,
 		&i.SummarizedThrough,
 		&i.Party,
+		&i.CharacterCreationComplete,
 	)
 	return i, err
 }
@@ -145,7 +182,7 @@ UPDATE campaigns
 SET party = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party, character_creation_complete
 `
 
 type UpdateCampaignPartyParams struct {
@@ -168,6 +205,7 @@ func (q *Queries) UpdateCampaignParty(ctx context.Context, arg UpdateCampaignPar
 		&i.Status,
 		&i.SummarizedThrough,
 		&i.Party,
+		&i.CharacterCreationComplete,
 	)
 	return i, err
 }
@@ -177,7 +215,7 @@ UPDATE campaigns
 SET status = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party, character_creation_complete
 `
 
 type UpdateCampaignStatusParams struct {
@@ -200,6 +238,7 @@ func (q *Queries) UpdateCampaignStatus(ctx context.Context, arg UpdateCampaignSt
 		&i.Status,
 		&i.SummarizedThrough,
 		&i.Party,
+		&i.CharacterCreationComplete,
 	)
 	return i, err
 }
@@ -209,7 +248,7 @@ UPDATE campaigns
 SET theme = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party, character_creation_complete
 `
 
 type UpdateCampaignThemeParams struct {
@@ -232,6 +271,7 @@ func (q *Queries) UpdateCampaignTheme(ctx context.Context, arg UpdateCampaignThe
 		&i.Status,
 		&i.SummarizedThrough,
 		&i.Party,
+		&i.CharacterCreationComplete,
 	)
 	return i, err
 }
@@ -242,7 +282,7 @@ SET narrative_summary = $2,
     summarized_through = $3,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party
+RETURNING id, name, owner_id, created_at, updated_at, theme, narrative_summary, dm_notes, status, summarized_through, party, character_creation_complete
 `
 
 type UpdateNarrativeSummaryParams struct {
@@ -266,6 +306,7 @@ func (q *Queries) UpdateNarrativeSummary(ctx context.Context, arg UpdateNarrativ
 		&i.Status,
 		&i.SummarizedThrough,
 		&i.Party,
+		&i.CharacterCreationComplete,
 	)
 	return i, err
 }

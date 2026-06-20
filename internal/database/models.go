@@ -57,17 +57,18 @@ func (ns NullCombatStatus) Value() (driver.Value, error) {
 }
 
 type Campaign struct {
-	ID                uuid.UUID
-	Name              string
-	OwnerID           uuid.UUID
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	Theme             string
-	NarrativeSummary  string
-	DmNotes           string
-	Status            string
-	SummarizedThrough int32
-	Party             json.RawMessage
+	ID                        uuid.UUID
+	Name                      string
+	OwnerID                   uuid.UUID
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
+	Theme                     string
+	NarrativeSummary          string
+	DmNotes                   string
+	Status                    string
+	SummarizedThrough         int32
+	Party                     json.RawMessage
+	CharacterCreationComplete bool
 }
 
 type Character struct {

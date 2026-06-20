@@ -11,6 +11,8 @@ import (
 	"github.com/sqlc-dev/pqtype"
 )
 
+const CreationCompleteSignal = "CHARACTER_CREATION_COMPLETE"
+
 type CharacterInfo struct {
 	ID                    string             `json:"id"`
 	UserID                string             `json:"user_id"`
@@ -226,6 +228,7 @@ func ApplyCharacterUpdates(ctx context.Context, db *database.Queries, characterI
 		TalentPointsAvailable: dbChar.TalentPointsAvailable,
 		TalentsInvested:       dbChar.TalentsInvested,
 		EquippedSlots:         equippedSlots,
+		Inventory:             dbChar.Inventory,
 	})
 	if err != nil {
 		return CharacterInfo{}, fmt.Errorf("failed to update character: %w", err)

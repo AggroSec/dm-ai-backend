@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/AggroSec/dm-ai-backend/internal/ai"
 	"github.com/AggroSec/dm-ai-backend/internal/database"
+	"github.com/AggroSec/dm-ai-backend/internal/game"
 	"github.com/google/uuid"
 )
 
@@ -131,7 +133,7 @@ func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
 	} else if req.CombatID != nil {
 		aiBuild, err := ai.BuildCombatContext(r.Context(), s.db, s.cfg, req.CampaignID, req.CharacterID, *req.CombatID, playerMsg.Content)
 		if err != nil {
-			logAIError("failed to built combat context", err)
+			logAIError("failed to build combat context", err)
 			respondError(w, http.StatusInternalServerError, "internal server error")
 			return
 		}
@@ -141,7 +143,7 @@ func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
 	} else {
 		aiBuild, err := ai.BuildNarrativeContext(r.Context(), s.db, s.cfg, req.CampaignID, req.CharacterID, playerMsg.Content)
 		if err != nil {
-			logAIError("failed to built narrative context", err)
+			logAIError("failed to build narrative context", err)
 			respondError(w, http.StatusInternalServerError, "internal server error")
 			return
 		}
@@ -156,6 +158,17 @@ func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
 	resp, newCombatID, err := s.aiClient.ChatWithTools(r.Context(), aiContext, ai.GetToolDefinitions(), dispatcher)
 	if err != nil {
 		logAIError("Chat call failed", err)
+		respondError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	if strings.Contains(resp, game.CreationCompleteSignal) {
+		_, err := s.db.SetCharacterCreationComplete(r.Context(), database.SetCharacterCreationCompleteParams{
+			ID:                        req.CampaignID,
+			CharacterCreationComplete: true,
+		})
+		if err != nil {
+			logAIError("failed to set character creation complete", err)
+		}
 	}
 	if newCombatID != nil {
 		responseCombatID = newCombatID

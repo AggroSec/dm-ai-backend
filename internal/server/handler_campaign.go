@@ -74,12 +74,14 @@ func (s *Server) handlerCreateCampaign(w http.ResponseWriter, r *http.Request) {
 
 	logCampaign(fmt.Sprintf("Successfully created new campaign: %s(%v) with party: %v", updatedCampaign.Name, updatedCampaign.ID, string(marshalParty)))
 	type newCampaignResponse struct {
-		CampaignID  uuid.UUID `json:"campaign_id"`
-		CharacterID uuid.UUID `json:"character_id"`
+		CampaignID                uuid.UUID `json:"campaign_id"`
+		CharacterID               uuid.UUID `json:"character_id"`
+		CharacterCreationComplete bool      `json:"character_creation_complete"`
 	}
 	resp := newCampaignResponse{
-		CampaignID:  updatedCampaign.ID,
-		CharacterID: character.ID,
+		CampaignID:                updatedCampaign.ID,
+		CharacterID:               character.ID,
+		CharacterCreationComplete: updatedCampaign.CharacterCreationComplete,
 	}
 	respondJSON(w, http.StatusCreated, resp)
 }
@@ -100,11 +102,12 @@ func (s *Server) handlerGetCampaigns(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type getCampaignResponse struct {
-		ID     uuid.UUID          `json:"campaign_id"`
-		Name   string             `json:"name"`
-		Status string             `json:"status"`
-		Party  []game.PartyMember `json:"party"`
-		Theme  string             `json:"theme"`
+		ID                        uuid.UUID          `json:"campaign_id"`
+		Name                      string             `json:"name"`
+		Status                    string             `json:"status"`
+		Party                     []game.PartyMember `json:"party"`
+		Theme                     string             `json:"theme"`
+		ChararactCreationComplete bool               `json:"character_creation_complete"`
 	}
 	var campaigns []getCampaignResponse
 	for _, campaign := range dbResult {
@@ -116,11 +119,12 @@ func (s *Server) handlerGetCampaigns(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		campaignInfo := getCampaignResponse{
-			ID:     campaign.ID,
-			Name:   campaign.Name,
-			Status: campaign.Status,
-			Party:  party,
-			Theme:  campaign.Theme,
+			ID:                        campaign.ID,
+			Name:                      campaign.Name,
+			Status:                    campaign.Status,
+			Party:                     party,
+			Theme:                     campaign.Theme,
+			ChararactCreationComplete: campaign.CharacterCreationComplete,
 		}
 		campaigns = append(campaigns, campaignInfo)
 	}

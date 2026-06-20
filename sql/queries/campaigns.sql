@@ -47,3 +47,10 @@ SET party = $2,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: SetCharacterCreationComplete :one
+UPDATE campaigns
+SET character_creation_complete = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING *;

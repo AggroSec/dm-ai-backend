@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/AggroSec/dm-ai-backend/internal/config"
@@ -75,7 +76,7 @@ func BuildCombatContext(ctx context.Context, db *database.Queries, cfg *config.C
 	}
 	for _, message := range unsummarizedMessages {
 		var toolCalls []ToolCall
-		if message.ToolCalls != nil {
+		if message.Role != "tool" && message.ToolCalls != nil {
 			err = json.Unmarshal(message.ToolCalls, &toolCalls)
 			if err != nil {
 				return []Message{}, err
@@ -134,7 +135,7 @@ func BuildNarrativeContext(ctx context.Context, db *database.Queries, cfg *confi
 	}
 	for _, message := range unsummarizedMessages {
 		var toolCalls []ToolCall
-		if message.ToolCalls != nil {
+		if message.Role != "tool" && message.ToolCalls != nil {
 			err = json.Unmarshal(message.ToolCalls, &toolCalls)
 			if err != nil {
 				return []Message{}, err
@@ -196,7 +197,7 @@ func BuildCharacterCreationContext(cfg *config.Config, ctx context.Context, db *
 
 	for _, message := range unsummarizedMessages {
 		var toolCalls []ToolCall
-		if message.ToolCalls != nil {
+		if message.Role != "tool" && message.ToolCalls != nil {
 			err = json.Unmarshal(message.ToolCalls, &toolCalls)
 			if err != nil {
 				return []Message{}, err
@@ -215,6 +216,7 @@ func BuildCharacterCreationContext(cfg *config.Config, ctx context.Context, db *
 		Content: playerMessage,
 	})
 
+	log.Printf(" | [DEBUG] class: %s domain: %s fates context: %s", character.Class, classDomain, fatesReference[:100])
 	return msgs, nil
 }
 
