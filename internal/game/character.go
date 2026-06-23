@@ -199,10 +199,35 @@ func ApplyCharacterUpdates(ctx context.Context, db *database.Queries, characterI
 		dbChar.TalentsInvested = talentsJSON
 	}
 
-	var equippedSlots pqtype.NullRawMessage
+	var dbEquippedSlots pqtype.NullRawMessage
 	if dbChar.EquippedSlots.Valid {
-		equippedSlots = dbChar.EquippedSlots
+		dbEquippedSlots = dbChar.EquippedSlots
 	}
+
+	//derive stats that rely on equipment and regular skill stats
+
+	// Unmarshal inventory and equipped slots for derivation
+	var inventory []Item
+	if len(dbChar.Inventory) > 0 {
+		json.Unmarshal(dbChar.Inventory, &inventory)
+	}
+	var equippedSlots EquippedSlots
+	if dbChar.EquippedSlots.Valid {
+		err = json.Unmarshal(dbChar.EquippedSlots.RawMessage, &equippedSlots)
+		if err != nil {
+			return CharacterInfo{}, fmt.Errorf("failed to unmarshal inventory: %w", err)
+		}
+	}
+
+	derived := DeriveCharacterStats(
+		int(dbChar.Strength), int(dbChar.Dexterity), int(dbChar.Fortitude),
+		int(dbChar.Willpower), int(dbChar.Alacrity), int(dbChar.Wisdom),
+		int(dbChar.Level), inventory, equippedSlots,
+	)
+	dbChar.MaxHp = int32(derived.MaxHP)
+	dbChar.MaxWp = int32(derived.MaxWP)
+	dbChar.MaxAp = int32(derived.MaxAP)
+	dbChar.OvercapAp = int32(derived.OvercapAP)
 
 	_, err = db.UpdateCharacter(ctx, database.UpdateCharacterParams{
 		ID:                    characterID,
@@ -227,7 +252,7 @@ func ApplyCharacterUpdates(ctx context.Context, db *database.Queries, characterI
 		OvercapAp:             dbChar.OvercapAp,
 		TalentPointsAvailable: dbChar.TalentPointsAvailable,
 		TalentsInvested:       dbChar.TalentsInvested,
-		EquippedSlots:         equippedSlots,
+		EquippedSlots:         dbEquippedSlots,
 		Inventory:             dbChar.Inventory,
 	})
 	if err != nil {

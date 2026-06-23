@@ -119,7 +119,7 @@ func GetToolDefinitions() []Tool {
 			Type: "function",
 			Function: Function{
 				Name:        "validate_action",
-				Description: "Used to validate a player's skill/ability before it is executed in combat. supply the cost and server will validate if the player has the resources to perform the action and return a boolean or error. This is used to prevent players from performing actions they don't have the resources for and to help guide them towards valid actions. Will also deduct the resources if the action is valid so you don't have to worry about that part. For the associated cost, if there is none present just put 0 for the cost and it will validate based on the action alone. (e.g. 0 HP, 0 WP, 2 AP is an ability that just costs AP). you will process also need to validate an NPCs actions through this. For NPC combatants, continue taking actions until AP reaches 0. Always end NPC turn with at least a basic attack if no other action is available. Turn advances automatically when AP hits 0 for NPCs through this tool call, however finish up the rolls and damage/effect applying, etc before moving to the next combatants turn.",
+				Description: "Used to validate a player's skill/ability before it is executed in combat. supply the cost and server will validate if the player has the resources to perform the action and return a boolean or error. This is used to prevent players from performing actions they don't have the resources for and to help guide them towards valid actions. Will also deduct the resources if the action is valid so you don't have to worry about that part. For the associated cost, if there is none present just put 0 for the cost and it will validate based on the action alone. (e.g. 0 HP, 0 WP, 2 AP is an ability that just costs AP). you will also need to validate an NPCs actions through this. For NPC combatants, continue taking actions until AP reaches 0. Always end NPC turn with at least a basic attack if no other action is available. call advance_turn when the player says their turn is over, and when the NPCs exhaust their ap",
 				Parameters: Parameters{
 					Type: "object",
 					Properties: map[string]Property{
@@ -368,7 +368,7 @@ func GetToolDefinitions() []Tool {
 			Type: "function",
 			Function: Function{
 				Name:        "equip_item",
-				Description: "Used to equip an item on a character. This is used for when a character wants to use an item that they have in their inventory. If used during combat, validate the action first for a cost of 1 AP, then supply the combat ID. Combat ID is optional otherwise.",
+				Description: "Used to equip an item on a character. This is used for when a character wants to use an item that they have in their inventory. If used during combat, validate the action first for a cost of 1 AP, then supply the combat ID. Combat ID is optional otherwise. Do NOT update the stats yourself, the stats will be updated by the system when the item is equipped.",
 				Parameters: Parameters{
 					Type: "object",
 					Properties: map[string]Property{
@@ -489,8 +489,29 @@ func GetToolDefinitions() []Tool {
 		{
 			Type: "function",
 			Function: Function{
+				Name:        "end_turn",
+				Description: "Call this to advance the combat to the next combatant's turn. MUST be called when the player declares their turn is over, and MUST be called after all NPC actions are fully resolved. Do not narrate turn advancement — always call this tool. Returns the updated combat state including the next combatant's refreshed AP.",
+				Parameters: Parameters{
+					Type: "object",
+					Properties: map[string]Property{
+						"combat_id": {
+							Type:        "string",
+							Description: "The ID of the active combat.",
+						},
+						"combatant_id": {
+							Type:        "string",
+							Description: "The ID of the combatant whose turn is ending.",
+						},
+					},
+					Required: []string{"combat_id", "combatant_id"},
+				},
+			},
+		},
+		{
+			Type: "function",
+			Function: Function{
 				Name:        "give_item",
-				Description: "Used to give an item to a character. You create all loot/items to fit the game system through this tool. This is used for when a character acquires a new item, whether through looting, purchasing, or as a quest reward.",
+				Description: "Used to give an item to a character. You create all loot/items to fit the game system through this tool. This is used for when a character acquires a new item, whether through looting, purchasing, or as a quest reward. do not update the characters stats yourself, they will get the stats when the items are equipped.",
 				Parameters: Parameters{
 					Type: "object",
 					Properties: map[string]Property{

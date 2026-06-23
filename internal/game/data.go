@@ -61,7 +61,7 @@ type BranchSkills struct {
 
 // LoadClassBranch loads a single class branch JSON file.
 func LoadClassBranch(dataDir, class, branch string) (ClassData, error) {
-	path := filepath.Join(dataDir, "classes", class, branch+".json")
+	path := filepath.Join(dataDir, "classes", strings.ToLower(class), branch+".json")
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return ClassData{}, fmt.Errorf("failed to read class data %s/%s: %w", class, branch, err)
@@ -80,7 +80,7 @@ func LoadSkillsForCharacter(dataDir, class string, talents []TalentInvestment) (
 	var available []Skill
 
 	for _, talent := range talents {
-		data, err := LoadClassBranch(dataDir, class, talent.Branch)
+		data, err := LoadClassBranch(dataDir, strings.ToLower(class), talent.Branch)
 		if err != nil {
 			continue
 		}
@@ -105,7 +105,7 @@ func LoadAllSkillsForCharacter(dataDir, class string, talents []TalentInvestment
 		investedPoints[t.Branch] = t.Points
 	}
 
-	classPath := filepath.Join(dataDir, "classes", class)
+	classPath := filepath.Join(dataDir, "classes", strings.ToLower(class))
 	entries, err := os.ReadDir(classPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read class directory %s: %w", class, err)

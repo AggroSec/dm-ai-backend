@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -19,6 +20,7 @@ type Config struct {
 	Port                string
 	AppEnv              string
 	DataDir             string
+	DebugLogging        bool
 }
 
 func LoadConfig() (*Config, error) {
@@ -30,6 +32,7 @@ func LoadConfig() (*Config, error) {
 	cfg.OpenRouterAPIKey = requireEnv("OPENROUTER_API_KEY")
 	cfg.OpenRouterModel = requireEnv("OPENROUTER_MODEL")
 	cfg.DataDir = requireEnv("DATA_DIR")
+	cfg.DebugLogging = parseBool("DEBUG_LOGGING")
 
 	cfg.Port = getEnvOrDefault("PORT", "8080")
 	cfg.AppEnv = getEnvOrDefault("APP_ENV", "development")
@@ -50,6 +53,22 @@ func LoadConfig() (*Config, error) {
 
 	return cfg, nil
 
+}
+
+func parseBool(key string) bool {
+	val := os.Getenv(key)
+	if val == "" {
+		panic(fmt.Sprintf("boolean not set correctly for %s", key))
+	}
+	var result bool
+	if strings.ToLower(val) == "true" {
+		result = true
+	} else if strings.ToLower(val) == "false" {
+		result = false
+	} else {
+		panic(fmt.Sprintf("boolean not set correctly for %s", key))
+	}
+	return result
 }
 
 func requireEnv(key string) string {

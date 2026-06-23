@@ -26,8 +26,9 @@ type actionRequest struct {
 }
 
 type actionResponse struct {
-	Message  string     `json:"message"`
-	CombatID *uuid.UUID `json:"combat_id,omitempty"`
+	Message     string     `json:"message"`
+	CombatID    *uuid.UUID `json:"combat_id,omitempty"`
+	CombatEnded bool       `json:"combat_ended,omitempty"`
 }
 
 func (s *Server) handlerAITest(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +72,7 @@ func (s *Server) handlerAITestTools(w http.ResponseWriter, r *http.Request) {
 		Role:    "system",
 		Content: "You are a test assistant. When the user asks you to roll a dice, call the request_roll tool",
 	}
-	resp, _, err := s.aiClient.ChatWithTools(r.Context(), []ai.Message{systemPrompt, msg}, ai.GetToolDefinitions(), nil)
+	resp, _, _, err := s.aiClient.ChatWithTools(r.Context(), []ai.Message{systemPrompt, msg}, ai.GetToolDefinitions(), nil)
 	if err != nil {
 		logAIError("AI chat error", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")
@@ -155,7 +156,7 @@ func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
 	responseCombatID := req.CombatID
 
 	dispatcher := ai.NewDispatcher(s.db, s.cfg, req.CampaignID)
-	resp, newCombatID, err := s.aiClient.ChatWithTools(r.Context(), aiContext, ai.GetToolDefinitions(), dispatcher)
+	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), aiContext, ai.GetToolDefinitions(), dispatcher)
 	if err != nil {
 		logAIError("Chat call failed", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")
@@ -174,9 +175,18 @@ func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
 		responseCombatID = newCombatID
 	}
 
-	aiResponse := actionResponse{
-		Message:  resp,
-		CombatID: responseCombatID,
+	var aiResponse actionResponse
+	if combatEnded {
+		aiResponse = actionResponse{
+			Message:     resp,
+			CombatID:    responseCombatID,
+			CombatEnded: combatEnded,
+		}
+	} else {
+		aiResponse = actionResponse{
+			Message:  resp,
+			CombatID: responseCombatID,
+		}
 	}
 
 	logAIInfo(fmt.Sprintf("request successfully processed for character: %v", req.CharacterID))

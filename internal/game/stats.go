@@ -112,3 +112,35 @@ func DeriveOvercapAP(wisdom int, buffs Item) int {
 func DeriveWPRegen(alacrity int, buffs Item) int {
 	return baseWPRegen + ((alacrity + buffs.Alacrity) / resourceDivisor)
 }
+
+// DeriveCharacterStats calculates all derived stats from base stats, level, and equipped items.
+// Call this after any stat or equipment change to keep derived values in sync.
+// Returns updated values for MaxHP, MaxWP, MaxAP, OvercapAP ready to save to DB.
+type DerivedStats struct {
+	MaxHP     int
+	MaxWP     int
+	MaxAP     int
+	OvercapAP int
+}
+
+func DeriveCharacterStats(strength, dexterity, fortitude, willpower, alacrity, wisdom, level int, inventory []Item, equippedSlots EquippedSlots) DerivedStats {
+	// Build a temporary combatant just to reuse GetTotalStatBuffs
+	temp := Combatant{
+		Strength:      strength,
+		Dexterity:     dexterity,
+		Fortitude:     fortitude,
+		Willpower:     willpower,
+		Alacrity:      alacrity,
+		Wisdom:        wisdom,
+		Inventory:     inventory,
+		EquippedSlots: equippedSlots,
+	}
+	buffs := GetTotalStatBuffs(temp)
+
+	return DerivedStats{
+		MaxHP:     DeriveMaxHP(fortitude, level, buffs),
+		MaxWP:     DeriveMaxWP(willpower, level, buffs),
+		MaxAP:     DeriveMaxAP(dexterity, buffs),
+		OvercapAP: DeriveOvercapAP(wisdom, buffs),
+	}
+}

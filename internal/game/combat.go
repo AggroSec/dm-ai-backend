@@ -41,11 +41,12 @@ func CreateCombatSession(ctx context.Context, db *database.Queries, party []Part
 			ID:            dbPlayer.ID,
 			Name:          dbPlayer.Name,
 			Type:          "player",
-			HP:            int(dbPlayer.CurrentHp),
+			Level:         int(dbPlayer.Level),
+			HP:            min(int(dbPlayer.CurrentHp), int(dbPlayer.MaxHp)),
 			MaxHP:         int(dbPlayer.MaxHp),
-			WP:            int(dbPlayer.CurrentWp),
+			WP:            min(int(dbPlayer.CurrentWp), int(dbPlayer.MaxWp)),
 			MaxWP:         int(dbPlayer.MaxWp),
-			AP:            int(dbPlayer.ActionPoints),
+			AP:            int(dbPlayer.MaxAp),
 			MaxAP:         int(dbPlayer.MaxAp),
 			OvercapAP:     int(dbPlayer.OvercapAp),
 			Strength:      int(dbPlayer.Strength),
@@ -66,6 +67,7 @@ func CreateCombatSession(ctx context.Context, db *database.Queries, party []Part
 		npc.IsAlive = true
 		npc.StatusEffects = []StatusEffect{}
 		npc.IsDefending = false
+		npc.Level = 1
 		session.Combatants = append(session.Combatants, npc)
 	}
 
@@ -275,16 +277,38 @@ func EndCombat(ctx context.Context, db *database.Queries, sessionID uuid.UUID, o
 	// Reset WP to max for all players and sync HP/WP to characters table
 	for i, c := range session.Combatants {
 		if c.Type == "player" {
-			session.Combatants[i].WP = c.MaxWP
+			// reset derivations of stats
+			dbChar, err := db.GetCharacterByID(ctx, c.ID)
+			if err != nil {
+				log.Printf("failed to retrieve db character for stat derivation")
+			}
+			var inventory []Item
+			if len(dbChar.Inventory) > 0 {
+				json.Unmarshal(dbChar.Inventory, &inventory)
+			}
+			var equippedSlots EquippedSlots
+			if dbChar.EquippedSlots.Valid {
+				json.Unmarshal(dbChar.EquippedSlots.RawMessage, &equippedSlots)
+			}
+			derived := DeriveCharacterStats(
+				int(dbChar.Strength), int(dbChar.Dexterity), int(dbChar.Fortitude),
+				int(dbChar.Willpower), int(dbChar.Alacrity), int(dbChar.Wisdom),
+				int(dbChar.Level), inventory, equippedSlots,
+			)
+			session.Combatants[i].WP = derived.MaxWP
+			session.Combatants[i].MaxWP = derived.MaxWP
+			session.Combatants[i].MaxHP = derived.MaxHP
+			session.Combatants[i].MaxAP = derived.MaxAP
+			session.Combatants[i].OvercapAP = derived.OvercapAP
 			if err := db.UpdateCharacterHP(ctx, database.UpdateCharacterHPParams{
 				ID:        c.ID,
-				CurrentHp: int32(c.HP),
+				CurrentHp: int32(session.Combatants[i].HP),
 			}); err != nil {
 				log.Printf("failed to sync HP for character %s at end of combat: %v", c.ID, err)
 			}
 			if err := db.UpdateCharacterWP(ctx, database.UpdateCharacterWPParams{
 				ID:        c.ID,
-				CurrentWp: int32(c.MaxWP),
+				CurrentWp: int32(session.Combatants[i].MaxWP),
 			}); err != nil {
 				log.Printf("failed to sync WP for character %s at end of combat: %v", c.ID, err)
 			}
@@ -313,12 +337,22 @@ func StartTurn(session *CombatSession) {
 	charID := session.CurrentTurn
 	for i, c := range session.Combatants {
 		if c.ID == charID {
+			if c.Type == "player" {
+				derived := DeriveCharacterStats(c.Strength, c.Dexterity, c.Fortitude, c.Willpower, c.Alacrity, c.Wisdom, c.Level, c.Inventory, c.EquippedSlots)
+				session.Combatants[i].MaxHP = derived.MaxHP
+				c.MaxAP = derived.MaxAP
+				session.Combatants[i].MaxAP = derived.MaxAP
+				session.Combatants[i].MaxWP = derived.MaxWP
+				session.Combatants[i].OvercapAP = derived.OvercapAP
+			}
 			if session.Round == 1 {
 				session.Combatants[i].AP = c.MaxAP
 			} else {
 				session.Combatants[i].AP = min(c.AP+c.MaxAP, c.OvercapAP)
 			}
 			session.Combatants[i].IsDefending = false
+			buffs := GetTotalStatBuffs(session.Combatants[i])
+			session.Combatants[i].WP = min(c.WP+DeriveWPRegen(c.Alacrity, buffs), session.Combatants[i].MaxWP)
 			break
 		}
 	}

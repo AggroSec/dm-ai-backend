@@ -319,7 +319,7 @@ def run_narrative_loop(campaign_id: str, character_id: str, combat_id: str | Non
             combat_id = new_combat_id
             print_system(f"⚔  Combat has begun!")
 
-        if combat_id and not new_combat_id:
+        if action_resp.get("combat_ended"):
             combat_id = None
             print_system("Combat has ended. Returning to narrative mode.")
 

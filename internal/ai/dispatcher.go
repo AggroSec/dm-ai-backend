@@ -44,6 +44,7 @@ func (d *Dispatcher) ExecuteToolCall(ctx context.Context, toolCall ToolCall) (st
 		"give_item":            d.handleGiveItem,
 		"equip_item":           d.handleEquipItem,
 		"rest":                 d.handleRest,
+		"end_turn":             d.handleEndTurn,
 	}
 
 	handler, ok := handlers[toolCall.Function.Name]
@@ -412,6 +413,7 @@ func (d *Dispatcher) handleGetSkills(ctx context.Context, args json.RawMessage) 
 
 	skills, err := game.LoadAllSkillsForCharacter(d.cfg.DataDir, characterInfo.Class, characterInfo.TalentsInvested, toolArgs.TalentPoints)
 	if err != nil {
+		logAIDispatcher(fmt.Sprintf("ai could not retrieve skills, error: %v", err))
 		return "", err
 	}
 
@@ -523,6 +525,26 @@ func (d *Dispatcher) handleRest(ctx context.Context, args json.RawMessage) (stri
 
 	logAIDispatcher(fmt.Sprintf("Character %v has successfully had a %s rest at %s.", toolArgs.CharacterID, toolArgs.RestType, toolArgs.Location))
 	return fmt.Sprintf("Character %v has successfully had a %s rest at %s.", toolArgs.CharacterID, toolArgs.RestType, toolArgs.Location), nil
+}
+
+func (d *Dispatcher) handleEndTurn(ctx context.Context, args json.RawMessage) (string, error) {
+	type endTurnParams struct {
+		CombatID    uuid.UUID `json:"combat_id"`
+		CombatantID uuid.UUID `json:"combatant_id"`
+	}
+	var toolArgs endTurnParams
+	err := json.Unmarshal(args, &toolArgs)
+	if err != nil {
+		return "", err
+	}
+
+	combatSession, err := game.AdvanceTurn(ctx, toolArgs.CombatID, d.db)
+	if err != nil {
+		return "", err
+	}
+
+	logAIDispatcher(fmt.Sprintf("turn advancement successfully completed: %v", combatSession))
+	return fmt.Sprintf("Turn advancement successful: %v", combatSession), nil
 }
 
 func logAIDispatcher(msg string) {

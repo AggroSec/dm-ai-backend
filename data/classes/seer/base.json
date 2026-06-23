@@ -21,7 +21,7 @@
       "wp_cost": 3,
       "hp_cost": 0,
       "description": "Hurl a bolt of pure spiritual energy at a target.",
-      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target magic defense. On hit deal 1d10 + Willpower modifier magic damage. Call apply_damage on hit. On crit: max 1d10 + roll + Willpower modifier."
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target AC (this magic attack can be dodged). On hit deal 1d10 + Willpower modifier magic damage. Call apply_damage on hit. On crit: max 1d10 + roll + Willpower modifier."
     },
     {
       "id": "ward",
@@ -41,7 +41,7 @@
       "wp_cost": 3,
       "hp_cost": 0,
       "description": "Curse a target with a sickening spiritual affliction that deals damage over time.",
-      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target magic defense to land the hex. On hit apply Sickened status — deals 1d4 + Willpower modifier magic damage each round for 5 rounds, persists false. Call apply_status with effect='sickened', duration=5, persists=false. On crit application: immediately deal max 1d4 + Willpower modifier damage on landing, then normal ticks proceed."
+      "ai_instruction": "Make magic attack roll (1d20 + Willpower modifier) vs target magic defense (base 4 + wisdom modifier) to land the hex. On hit apply Sickened status — deals 1d4 + Willpower modifier magic damage each round for 5 rounds, persists false. Call apply_status with effect='sickened', duration=5, persists=false. On crit application: immediately deal max 1d4 + Willpower modifier damage on landing, then normal ticks proceed."
     },
     {
       "id": "dark_insight",

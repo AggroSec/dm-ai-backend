@@ -51,6 +51,7 @@ type Combatant struct {
 	ID            uuid.UUID      `json:"id"`
 	Name          string         `json:"name"`
 	Type          string         `json:"type"`
+	Level         int            `json:"level,omitempty"`
 	HP            int            `json:"hp"`
 	MaxHP         int            `json:"max_hp"`
 	WP            int            `json:"wp"`

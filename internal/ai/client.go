@@ -17,7 +17,7 @@ import (
 
 const (
 	openRouterAPIURL = "https://openrouter.ai/api/v1/chat/completions"
-	maxIterations    = 10
+	maxIterations    = 20
 )
 
 type Message struct {
@@ -139,9 +139,10 @@ func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 	return chatResponse.Choices[0].Message.Content, nil
 }
 
-func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool, dispatcher *Dispatcher) (string, *uuid.UUID, error) {
+func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool, dispatcher *Dispatcher) (string, *uuid.UUID, bool, error) {
 	messages := msgs
 	var combatID *uuid.UUID
+	combatEnded := false
 
 	for i := 0; i < maxIterations; i++ {
 		chatRequest := ChatRequest{
@@ -153,12 +154,15 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 
 		jsonData, err := json.Marshal(chatRequest)
 		if err != nil {
-			return "", nil, err
+			return "", nil, combatEnded, err
+		}
+		if dispatcher.cfg.DebugLogging {
+			log.Printf(" | [DEBUG] full request: %s", string(jsonData))
 		}
 
 		req, err := http.NewRequestWithContext(ctx, "POST", c.URL, bytes.NewBuffer(jsonData))
 		if err != nil {
-			return "", nil, err
+			return "", nil, combatEnded, err
 		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+c.APIKey)
@@ -167,19 +171,30 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
-			return "", nil, err
+			return "", nil, combatEnded, err
 		}
 
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
-			return "", nil, fmt.Errorf("openrouter returned status %d: %s", resp.StatusCode, string(body))
+			return "", nil, combatEnded, fmt.Errorf("openrouter returned status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var rawResponse json.RawMessage
+		if err := json.NewDecoder(resp.Body).Decode(&rawResponse); err != nil {
+			return "", nil, combatEnded, err
+		}
+		if dispatcher.cfg.DebugLogging {
+			log.Printf(" | [DEBUG] full response: %s", string(rawResponse))
 		}
 
 		var chatResponse ChatResponse
-		if err := json.NewDecoder(resp.Body).Decode(&chatResponse); err != nil {
-			return "", nil, err
+		if err := json.Unmarshal(rawResponse, &chatResponse); err != nil {
+			return "", nil, combatEnded, err
+		}
+		if len(chatResponse.Choices) == 0 {
+			return "", nil, combatEnded, fmt.Errorf("openrouter returned empty choices — context may be full")
 		}
 
 		log.Printf(" | [DEBUG] finish_reason: %s", chatResponse.Choices[0].FinishReason)
@@ -189,7 +204,7 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 			msg := chatResponse.Choices[0].Message.Content
 			nextSequence, err := dispatcher.db.GetNextSequence(ctx, dispatcher.campaignID)
 			if err != nil {
-				return "", nil, fmt.Errorf("failed to get message sequence: %v", err)
+				return "", nil, combatEnded, fmt.Errorf("failed to get message sequence: %v", err)
 			}
 			dispatcher.db.InsertMessage(ctx, database.InsertMessageParams{
 				CampaignID: dispatcher.campaignID,
@@ -198,16 +213,16 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 				ToolCalls:  []byte("[]"),
 				Sequence:   nextSequence,
 			})
-			return msg, combatID, nil
+			return msg, combatID, combatEnded, nil
 		} else if chatResponse.Choices[0].FinishReason == "tool_calls" {
 			assistantMsg := chatResponse.Choices[0].Message
 			jsonToolCalls, err := json.Marshal(assistantMsg.ToolCalls)
 			if err != nil {
-				return "", nil, err
+				return "", nil, combatEnded, err
 			}
 			nextSequence, err := dispatcher.db.GetNextSequence(ctx, dispatcher.campaignID)
 			if err != nil {
-				return "", nil, err
+				return "", nil, combatEnded, err
 			}
 			dispatcher.db.InsertMessage(ctx, database.InsertMessageParams{
 				CampaignID: dispatcher.campaignID,
@@ -258,11 +273,14 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 				}
 				messages = append(messages, resultMsg)
 				logInternalAI("tool call finished")
+				if toolCall.Function.Name == "end_combat" {
+					combatEnded = true
+				}
 			}
 			continue
 		}
 	}
-	return "", nil, fmt.Errorf("too many AI iterations.")
+	return "", nil, combatEnded, fmt.Errorf("too many AI iterations.")
 }
 
 func logInternalAI(msg string) {
