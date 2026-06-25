@@ -21,7 +21,7 @@
       "wp_cost": 0,
       "hp_cost": 0,
       "description": "Study your target and find the gaps in their defense. All damage from your chosen weapon type hits harder for 3 rounds.",
-      "ai_instruction": "Requires chosen weapon type from Weapon Focus. Apply Vulnerable status to target — increases all damage taken from actor's chosen weapon type by Strength modifier for 3 rounds. Call apply_status with effect='vulnerable', duration=3, persists=false. Narrate the warrior reading the target's fighting style and finding weaknesses. When calculating damage from chosen weapon attacks against Vulnerable target add Strength modifier to damage total."
+      "ai_instruction": "Requires chosen weapon type from Weapon Focus. Apply Vulnerable status to target — increases all damage taken from actor's chosen weapon type by Strength modifier for 3 rounds. Call apply_status with effect='vulnerable', duration=3, persists=false. Narrate the warrior reading the target's fighting style and finding weaknesses. When calculating damage from chosen weapon attacks against Vulnerable target add Strength modifier to damage total. This is in addition to it already being applied on basic attacks"
     },
     {
       "id": "masterful_strike",

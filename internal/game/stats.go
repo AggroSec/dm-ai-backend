@@ -74,13 +74,12 @@ func GetTotalStatBuffs(combatant Combatant) Item {
 
 // DeriveAC returns the armor class based on fortitude and equipped chest armor.
 func DeriveAC(combatant Combatant) int {
-	buffs := GetTotalStatBuffs(combatant)
-	ac := GetModifier(combatant.Fortitude + buffs.Fortitude)
 	chest := GetEquippedItem(combatant, "chest")
+	chestDefense := 0
 	if chest != nil {
-		ac += chest.BaseDefense
+		chestDefense = chest.BaseDefense
 	}
-	return ac
+	return 8 + (combatant.Fortitude / 7) + (combatant.Dexterity / 10) + chestDefense
 }
 
 // DeriveMaxHP returns max HP based on fortitude, level, and gear buffs.

@@ -71,6 +71,12 @@ func CreateCombatSession(ctx context.Context, db *database.Queries, party []Part
 		session.Combatants = append(session.Combatants, npc)
 	}
 
+	//driving ac for each combatant
+	for i, c := range session.Combatants {
+		derivedAC := DeriveAC(c)
+		session.Combatants[i].AC = derivedAC
+	}
+
 	session.TurnOrder, session.Combatants = RollInitiative(session.Combatants)
 	session.CurrentTurn = session.TurnOrder[0]
 	session.Status = "active"
@@ -339,11 +345,13 @@ func StartTurn(session *CombatSession) {
 		if c.ID == charID {
 			if c.Type == "player" {
 				derived := DeriveCharacterStats(c.Strength, c.Dexterity, c.Fortitude, c.Willpower, c.Alacrity, c.Wisdom, c.Level, c.Inventory, c.EquippedSlots)
+				derivedAC := DeriveAC(c)
 				session.Combatants[i].MaxHP = derived.MaxHP
 				c.MaxAP = derived.MaxAP
 				session.Combatants[i].MaxAP = derived.MaxAP
 				session.Combatants[i].MaxWP = derived.MaxWP
 				session.Combatants[i].OvercapAP = derived.OvercapAP
+				session.Combatants[i].AC = derivedAC
 			}
 			if session.Round == 1 {
 				session.Combatants[i].AP = c.MaxAP

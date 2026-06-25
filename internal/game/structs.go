@@ -66,6 +66,7 @@ type Combatant struct {
 	Willpower     int            `json:"willpower"`
 	Alacrity      int            `json:"alacrity"`
 	Wisdom        int            `json:"wisdom"`
+	AC            int            `json:"ac"`
 	IsAlive       bool           `json:"is_alive"`
 	StatusEffects []StatusEffect `json:"status_effects"`
 	Inventory     []Item         `json:"inventory"`
