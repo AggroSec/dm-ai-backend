@@ -83,6 +83,8 @@ type Client struct {
 	db         *database.Queries
 }
 
+type StreamCallback func(text string)
+
 func NewClient(cfg config.Config, db *database.Queries) *Client {
 	return &Client{
 		HTTPClient: &http.Client{},
@@ -139,7 +141,7 @@ func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 	return chatResponse.Choices[0].Message.Content, nil
 }
 
-func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool, dispatcher *Dispatcher) (string, *uuid.UUID, bool, error) {
+func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool, dispatcher *Dispatcher, streamFn StreamCallback) (string, *uuid.UUID, bool, error) {
 	messages := msgs
 	var combatID *uuid.UUID
 	combatEnded := false
@@ -213,6 +215,9 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 				ToolCalls:  []byte("[]"),
 				Sequence:   nextSequence,
 			})
+			if streamFn != nil {
+				streamFn(msg)
+			}
 			return msg, combatID, combatEnded, nil
 		} else if chatResponse.Choices[0].FinishReason == "tool_calls" {
 			assistantMsg := chatResponse.Choices[0].Message
@@ -270,6 +275,9 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 					} else {
 						result = fmt.Sprintf("failed to unmarshal combat session: %v", err)
 					}
+				}
+				if toolCall.Function.Name == "narrate_combat" && streamFn != nil {
+					streamFn(result)
 				}
 				messages = append(messages, resultMsg)
 				logInternalAI("tool call finished")

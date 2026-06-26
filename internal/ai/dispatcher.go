@@ -45,6 +45,7 @@ func (d *Dispatcher) ExecuteToolCall(ctx context.Context, toolCall ToolCall) (st
 		"equip_item":           d.handleEquipItem,
 		"rest":                 d.handleRest,
 		"end_turn":             d.handleEndTurn,
+		"narrate_combat":       d.handleNarrateCombat,
 	}
 
 	handler, ok := handlers[toolCall.Function.Name]
@@ -545,6 +546,16 @@ func (d *Dispatcher) handleEndTurn(ctx context.Context, args json.RawMessage) (s
 
 	logAIDispatcher(fmt.Sprintf("turn advancement successfully completed: %v", combatSession))
 	return fmt.Sprintf("Turn advancement successful: %v", combatSession), nil
+}
+
+func (d *Dispatcher) handleNarrateCombat(ctx context.Context, args json.RawMessage) (string, error) {
+	var toolArgs struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(args, &toolArgs); err != nil {
+		return "", fmt.Errorf("failed to unmarshal narrate args: %w", err)
+	}
+	return toolArgs.Message, nil
 }
 
 func logAIDispatcher(msg string) {

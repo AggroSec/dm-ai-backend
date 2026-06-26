@@ -578,5 +578,22 @@ func GetToolDefinitions() []Tool {
 				},
 			},
 		},
+		{
+			Type: "function",
+			Function: Function{
+				Name:        "narrate_combat",
+				Description: "Use this tool to narrate combat events to the player in real time. Call this after EVERY individual action resolves — hits, misses, status effects, NPC decisions. Do not wait until the end of the turn to narrate. Each action gets its own narrate call immediately after it resolves. ALWAYS call narrate_combat to describe the outcome of combat before calling end_combat — victory narration, death scene, surrender, whatever fits. Never call end_combat without narrating the ending first.",
+				Parameters: Parameters{
+					Type: "object",
+					Properties: map[string]Property{
+						"message": {
+							Type:        "string",
+							Description: "The narrative text to display to the player.",
+						},
+					},
+					Required: []string{"message"},
+				},
+			},
+		},
 	}
 }

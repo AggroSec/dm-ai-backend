@@ -72,7 +72,7 @@ func (s *Server) handlerAITestTools(w http.ResponseWriter, r *http.Request) {
 		Role:    "system",
 		Content: "You are a test assistant. When the user asks you to roll a dice, call the request_roll tool",
 	}
-	resp, _, _, err := s.aiClient.ChatWithTools(r.Context(), []ai.Message{systemPrompt, msg}, ai.GetToolDefinitions(), nil)
+	resp, _, _, err := s.aiClient.ChatWithTools(r.Context(), []ai.Message{systemPrompt, msg}, ai.GetToolDefinitions(), nil, nil)
 	if err != nil {
 		logAIError("AI chat error", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")
@@ -90,6 +90,15 @@ func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// combat uses SSE streaming, everything else uses regular JSON
+	if req.CombatID != nil {
+		s.handlerAIActionStream(w, r, req)
+		return
+	}
+	s.handlerAIActionJSON(w, r, req)
+}
+
+func (s *Server) handlerAIActionJSON(w http.ResponseWriter, r *http.Request, req actionRequest) {
 	playerMsg := ai.Message{
 		Role:    "user",
 		Content: req.Message,
@@ -121,20 +130,11 @@ func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logAIError("failed to retrieve character for character creation", err)
 			respondError(w, http.StatusInternalServerError, "internal server error")
+			return
 		}
 		aiBuild, err := ai.BuildCharacterCreationContext(s.cfg, r.Context(), s.db, character, req.CampaignID, playerMsg.Content)
 		if err != nil {
-			logAIError("failed to built character creation context", err)
-			respondError(w, http.StatusInternalServerError, "internal server error")
-			return
-		}
-		for _, msg := range aiBuild {
-			aiContext = append(aiContext, msg)
-		}
-	} else if req.CombatID != nil {
-		aiBuild, err := ai.BuildCombatContext(r.Context(), s.db, s.cfg, req.CampaignID, req.CharacterID, *req.CombatID, playerMsg.Content)
-		if err != nil {
-			logAIError("failed to build combat context", err)
+			logAIError("failed to build character creation context", err)
 			respondError(w, http.StatusInternalServerError, "internal server error")
 			return
 		}
@@ -153,15 +153,14 @@ func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	responseCombatID := req.CombatID
-
 	dispatcher := ai.NewDispatcher(s.db, s.cfg, req.CampaignID)
-	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), aiContext, ai.GetToolDefinitions(), dispatcher)
+	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), aiContext, ai.GetToolDefinitions(), dispatcher, nil)
 	if err != nil {
 		logAIError("Chat call failed", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
+
 	if strings.Contains(resp, game.CreationCompleteSignal) {
 		_, err := s.db.SetCharacterCreationComplete(r.Context(), database.SetCharacterCreationCompleteParams{
 			ID:                        req.CampaignID,
@@ -171,26 +170,108 @@ func (s *Server) handlerAIAction(w http.ResponseWriter, r *http.Request) {
 			logAIError("failed to set character creation complete", err)
 		}
 	}
-	if newCombatID != nil {
-		responseCombatID = newCombatID
-	}
 
-	var aiResponse actionResponse
-	if combatEnded {
-		aiResponse = actionResponse{
-			Message:     resp,
-			CombatID:    responseCombatID,
-			CombatEnded: combatEnded,
-		}
-	} else {
-		aiResponse = actionResponse{
-			Message:  resp,
-			CombatID: responseCombatID,
-		}
+	aiResponse := actionResponse{
+		Message:     resp,
+		CombatID:    newCombatID,
+		CombatEnded: combatEnded,
 	}
 
 	logAIInfo(fmt.Sprintf("request successfully processed for character: %v", req.CharacterID))
 	respondJSON(w, http.StatusOK, aiResponse)
+}
+
+func (s *Server) handlerAIActionStream(w http.ResponseWriter, r *http.Request, req actionRequest) {
+	// Set SSE headers before writing anything
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		respondError(w, http.StatusInternalServerError, "streaming not supported")
+		return
+	}
+
+	playerMsg := ai.Message{
+		Role:    "user",
+		Content: req.Message,
+	}
+
+	msgSequence, err := s.db.GetNextSequence(r.Context(), req.CampaignID)
+	if err != nil {
+		logAIError("could not get next message sequence", err)
+		fmt.Fprintf(w, "event: error\ndata: internal server error\n\n")
+		flusher.Flush()
+		return
+	}
+
+	_, err = s.db.InsertMessage(r.Context(), database.InsertMessageParams{
+		CampaignID: req.CampaignID,
+		Role:       playerMsg.Role,
+		Content:    playerMsg.Content,
+		Sequence:   msgSequence,
+		ToolCalls:  []byte("[]"),
+	})
+	if err != nil {
+		logAIError("failed to add player message to db", err)
+		fmt.Fprintf(w, "event: error\ndata: internal server error\n\n")
+		flusher.Flush()
+		return
+	}
+
+	aiBuild, err := ai.BuildCombatContext(r.Context(), s.db, s.cfg, req.CampaignID, req.CharacterID, *req.CombatID, playerMsg.Content)
+	if err != nil {
+		logAIError("failed to build combat context", err)
+		fmt.Fprintf(w, "event: error\ndata: internal server error\n\n")
+		flusher.Flush()
+		return
+	}
+
+	var aiContext []ai.Message
+	for _, msg := range aiBuild {
+		aiContext = append(aiContext, msg)
+	}
+
+	// streamFn flushes each narrate_combat chunk to the client immediately
+	streamFn := func(text string) {
+		escaped := strings.ReplaceAll(text, "\n", "\\n")
+		fmt.Fprintf(w, "data: %s\n\n", escaped)
+		flusher.Flush()
+	}
+
+	dispatcher := ai.NewDispatcher(s.db, s.cfg, req.CampaignID)
+	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), aiContext, ai.GetToolDefinitions(), dispatcher, streamFn)
+	if err != nil {
+		logAIError("Chat call failed", err)
+		fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())
+		flusher.Flush()
+		return
+	}
+
+	// send metadata as final SSE event so CLI can update combat state
+	responseCombatID := req.CombatID
+	if newCombatID != nil {
+		responseCombatID = newCombatID
+	}
+
+	meta := actionResponse{
+		Message:     resp,
+		CombatID:    responseCombatID,
+		CombatEnded: combatEnded,
+	}
+	metaJSON, err := json.Marshal(meta)
+	if err != nil {
+		logAIError("failed to marshal meta response", err)
+		fmt.Fprintf(w, "event: error\ndata: failed to marshal response\n\n")
+		flusher.Flush()
+		return
+	}
+
+	fmt.Fprintf(w, "event: meta\ndata: %s\n\n", string(metaJSON))
+	flusher.Flush()
+
+	logAIInfo(fmt.Sprintf("request successfully processed for character: %v", req.CharacterID))
 }
 
 func logAIError(msg string, err error) {

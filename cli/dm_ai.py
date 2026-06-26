@@ -108,6 +108,87 @@ def api_post(path: str, body: dict, auth: bool = True) -> dict | None:
     return resp.json()
 
 
+def api_stream_combat(path: str, body: dict) -> dict | None:
+    """
+    POST to path with SSE streaming for combat only.
+    Prints narrative chunks as they arrive.
+    Returns meta dict containing combat_id, combat_ended etc.
+    """
+    headers = auth_headers()
+    try:
+        resp = requests.post(
+            f"{BASE_URL}{path}",
+            json=body,
+            headers=headers,
+            stream=True,
+        )
+    except requests.exceptions.RequestException as e:
+        print_error(f"Request failed: {e}")
+        return None
+
+    if resp.status_code == 401:
+        if refresh_jwt():
+            try:
+                resp = requests.post(
+                    f"{BASE_URL}{path}",
+                    json=body,
+                    headers=auth_headers(),
+                    stream=True,
+                )
+            except requests.exceptions.RequestException as e:
+                print_error(f"Request failed: {e}")
+                return None
+        else:
+            print_error("Session expired. Please login again.")
+            clear_session()
+            sys.exit(1)
+
+    if not resp.ok:
+        print_error(f"Request failed: {resp.status_code}")
+        return None
+
+    resp.encoding = 'utf-8'
+    meta = None
+    current_event = None
+    print()
+    print_divider()
+
+    for raw_line in resp.iter_lines(decode_unicode=True):
+        if not raw_line:
+            current_event = None
+            continue
+
+        if raw_line.startswith("event:"):
+            current_event = raw_line[len("event:"):].strip()
+            continue
+
+        if raw_line.startswith("data:"):
+            data = raw_line[len("data:"):].strip()
+            data = data.replace("\\n", "\n")
+
+            if current_event == "meta":
+                try:
+                    meta = json.loads(data)
+                except json.JSONDecodeError:
+                    pass
+
+            elif current_event == "error":
+                print_error(f"Server error: {data}")
+
+            else:
+                # narrative chunk — print as it arrives
+                for paragraph in data.split("\n"):
+                    if paragraph.strip():
+                        print(textwrap.fill(paragraph.strip(), width=70))
+                    else:
+                        print()
+
+    print_divider()
+    print()
+
+    return meta
+
+
 # ─────────────────────────────────────────────
 # Display helpers
 # ─────────────────────────────────────────────
@@ -236,7 +317,6 @@ def cmd_new_campaign():
     completed = run_character_creation(campaign_id, character_id, first_message)
 
     if completed:
-        # Drop straight into narrative loop
         run_narrative_loop(campaign_id, character_id)
 
 
@@ -276,7 +356,6 @@ def cmd_play():
 
     character_id = party[0]["character_id"]
 
-    # Route to character creation if not complete
     if not campaign.get("character_creation_complete"):
         print_system(f"Resuming character creation for campaign: {campaign['name']}")
         completed = run_character_creation(campaign_id, character_id)
@@ -308,22 +387,35 @@ def run_narrative_loop(campaign_id: str, character_id: str, combat_id: str | Non
         if combat_id:
             body["combat_id"] = combat_id
 
-        action_resp = api_post("/ai/action", body)
-        if not action_resp:
-            continue
+        # combat uses SSE streaming, narrative uses regular JSON
+        if combat_id:
+            meta = api_stream_combat("/ai/action", body)
+            if meta is None:
+                continue
 
-        message = action_resp.get("message", "")
-        new_combat_id = action_resp.get("combat_id")
+            new_combat_id = meta.get("combat_id")
 
-        if new_combat_id and not combat_id:
-            combat_id = new_combat_id
-            print_system(f"⚔  Combat has begun!")
+            if new_combat_id and not combat_id:
+                combat_id = new_combat_id
+                print_system("⚔  Combat has begun!")
 
-        if action_resp.get("combat_ended"):
-            combat_id = None
-            print_system("Combat has ended. Returning to narrative mode.")
+            if meta.get("combat_ended"):
+                combat_id = None
+                print_system("Combat has ended. Returning to narrative mode.")
 
-        print_dm(message)
+        else:
+            action_resp = api_post("/ai/action", body)
+            if not action_resp:
+                continue
+
+            message = action_resp.get("message", "")
+            new_combat_id = action_resp.get("combat_id")
+
+            if new_combat_id:
+                combat_id = new_combat_id
+                print_system("⚔  Combat has begun!")
+
+            print_dm(message)
 
 
 def cmd_help():
