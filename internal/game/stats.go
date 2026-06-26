@@ -1,5 +1,11 @@
 package game
 
+import (
+	"encoding/json"
+
+	"github.com/AggroSec/dm-ai-backend/internal/database"
+)
+
 const (
 	modifierDivisor = 5
 	resourceDivisor = 5
@@ -142,4 +148,36 @@ func DeriveCharacterStats(strength, dexterity, fortitude, willpower, alacrity, w
 		MaxAP:     DeriveMaxAP(dexterity, buffs),
 		OvercapAP: DeriveOvercapAP(wisdom, buffs),
 	}
+}
+
+func GetEffectiveStats(character database.Character) (str, dex, fort, wil, alc, wis int) {
+	str = int(character.Strength)
+	dex = int(character.Dexterity)
+	fort = int(character.Fortitude)
+	wil = int(character.Willpower)
+	alc = int(character.Alacrity)
+	wis = int(character.Wisdom)
+
+	var inventory []Item
+	if len(character.Inventory) > 0 {
+		json.Unmarshal(character.Inventory, &inventory)
+	}
+	var equippedSlots EquippedSlots
+	if character.EquippedSlots.Valid {
+		json.Unmarshal(character.EquippedSlots.RawMessage, &equippedSlots)
+	}
+
+	temp := Combatant{
+		Inventory:     inventory,
+		EquippedSlots: equippedSlots,
+	}
+	buffs := GetTotalStatBuffs(temp)
+
+	str += buffs.Strength
+	dex += buffs.Dexterity
+	fort += buffs.Fortitude
+	wil += buffs.Willpower
+	alc += buffs.Alacrity
+	wis += buffs.Wisdom
+	return
 }

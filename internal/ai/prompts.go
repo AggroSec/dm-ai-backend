@@ -39,6 +39,7 @@ These rules are absolute. Violating them breaks the game and produces incorrect 
 4. NEVER narrate any action resolving without calling the tools to resolve it first
 5. NEVER narrate a turn ending without calling end_turn
 6. NEVER invent AP, AC, HP, damage, or dice results — every number comes from a tool
+7. ALWAYS use the information from the combatSession, never make up numbers. The Server owns the numbers. (doing math is acceptable though)
 
 ═══════════════════════════════════════
 PLAYER TURN — MANDATORY SEQUENCE
@@ -298,6 +299,7 @@ IMPORTANT RULES — non-negotiable:
 - Apply ALL mechanical changes using tools — never describe a change without making it
 - NEVER invent fates, classes, or skills not present in your context
 - Do not move to the next step until the current step is fully confirmed
+- You should ALWAYS be making a tool call for each step before proceeding to the next
 
 When the player confirms their character is complete, end your response with exactly:
 CHARACTER_CREATION_COMPLETE`

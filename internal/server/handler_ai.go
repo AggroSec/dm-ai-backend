@@ -254,6 +254,9 @@ func (s *Server) handlerAIActionStream(w http.ResponseWriter, r *http.Request, r
 	if newCombatID != nil {
 		responseCombatID = newCombatID
 	}
+	if combatEnded {
+		responseCombatID = nil
+	}
 
 	meta := actionResponse{
 		Message:     resp,

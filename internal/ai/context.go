@@ -275,6 +275,7 @@ func getClassDomain(class string) string {
 }
 
 func CreateCharacterContext(character database.Character) string {
+	str, dex, fort, wil, alc, wis := game.GetEffectiveStats(character)
 	return fmt.Sprintf(
 		"CHARACTER SHEET\n"+
 			"ID: %s\n"+
@@ -286,8 +287,7 @@ func CreateCharacterContext(character database.Character) string {
 		character.ID,
 		character.Name, character.Race, character.Class, character.Level,
 		character.DrivingFate, character.BindingFate,
-		character.Strength, character.Dexterity, character.Fortitude,
-		character.Willpower, character.Alacrity, character.Wisdom,
+		str, dex, fort, wil, alc, wis,
 		character.CurrentHp, character.MaxHp,
 		character.CurrentWp, character.MaxWp,
 		character.ActionPoints, character.MaxAp, character.OvercapAp,

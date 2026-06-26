@@ -93,6 +93,13 @@ func GetCharacterInfo(ctx context.Context, db *database.Queries, characterID uui
 		}
 	}
 
+	// apply equipment stat buffs so AI sees effective stats not raw stats
+	temp := Combatant{
+		Inventory:     inventory,
+		EquippedSlots: equippedSlots,
+	}
+	buffs := GetTotalStatBuffs(temp)
+
 	return CharacterInfo{
 		ID:                    dbChar.ID.String(),
 		UserID:                dbChar.UserID.String(),
@@ -103,12 +110,12 @@ func GetCharacterInfo(ctx context.Context, db *database.Queries, characterID uui
 		Experience:            int(dbChar.Experience),
 		DrivingFate:           dbChar.DrivingFate,
 		BindingFate:           dbChar.BindingFate,
-		Strength:              int(dbChar.Strength),
-		Dexterity:             int(dbChar.Dexterity),
-		Fortitude:             int(dbChar.Fortitude),
-		Willpower:             int(dbChar.Willpower),
-		Alacrity:              int(dbChar.Alacrity),
-		Wisdom:                int(dbChar.Wisdom),
+		Strength:              int(dbChar.Strength) + buffs.Strength,
+		Dexterity:             int(dbChar.Dexterity) + buffs.Dexterity,
+		Fortitude:             int(dbChar.Fortitude) + buffs.Fortitude,
+		Willpower:             int(dbChar.Willpower) + buffs.Willpower,
+		Alacrity:              int(dbChar.Alacrity) + buffs.Alacrity,
+		Wisdom:                int(dbChar.Wisdom) + buffs.Wisdom,
 		CurrentHp:             int(dbChar.CurrentHp),
 		MaxHp:                 int(dbChar.MaxHp),
 		CurrentWp:             int(dbChar.CurrentWp),
