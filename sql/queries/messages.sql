@@ -32,3 +32,8 @@ WHERE campaign_id = $1;
 -- name: DeleteMessagesByCampaign :exec
 DELETE FROM messages
 WHERE campaign_id = $1;
+
+-- name: CountMessagesAfterSequence :one
+SELECT COUNT(*) FROM messages
+WHERE campaign_id = $1
+AND sequence > $2;

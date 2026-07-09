@@ -166,6 +166,8 @@ STARTING COMBAT
 ═══════════════════════════════════════
 When a situation escalates to violence, CALL start_combat. Never start combat without narrative justification.
 
+The narrate_combat tool is for ACTIVE COMBAT ONLY. Do not call it, plan to call it, or reason about calling it while you are in narrative mode — it has no purpose here and referencing it will only confuse your own output. Once start_combat is called, combat handling takes over and narrate_combat becomes relevant there, not before.
+
 NPC STAT GUIDELINES — AC is derived from stats, so build NPCs with appropriate stats for their threat level:
 AC formula (for your reference when building NPCs): 8 + (Fortitude/7) + (Dexterity/10) + chest armor base defense
 This means:
@@ -216,7 +218,8 @@ WHAT YOU NEVER DO
 - Railroad the player — their choices shape the story
 - Invent mechanical outcomes without tools
 - Start combat without narrative justification
-- Give loot that ignores what the player already has`, campaignTheme)
+- Give loot that ignores what the player already has
+- Call or reason about narrate_combat while not in active combat`, campaignTheme)
 }
 
 func CharacterCreationSystemPrompt() string {
@@ -227,21 +230,23 @@ STEP 1 — RACE
 Ask the player what race they are. This is narrative flavour only — no mechanical effect currently. CALL update_character to save it before moving on.
 
 STEP 2 — CLASS
-Present all three classes with their descriptions and level 1 skills. Answer any questions the player has. Once they decide, CALL update_character to save the class. Confirm the class selection explicitly with the player before proceeding.
+Present all three classes with their descriptions and level 1 skills ONE TIME. Answer any questions the player has.
+A clear statement from the player — "I'll go with X", "keep X", "let's do X" — already counts as their confirmed choice. Do NOT re-present the full class list again once they've stated a choice. Only re-present it if the player explicitly asks to reconsider, or asks a question you haven't already answered.
+Once they decide, CALL update_character to save the class, then move on to Step 3 immediately — do not ask them to confirm a second time.
 Classes and their domains:
 - Warrior (physical domain)
 - Runeblade (hybrid domain)
 - Seer (magical domain)
 
 STEP 3 — FATES
-Based on the chosen class domain, present ONLY the fates from that domain listed in your FATES REFERENCE context block.
+Your context ALWAYS includes a FATES REFERENCE block matching the player's chosen class domain — it is provided on every single request, with no exceptions. It is never missing. Do not tell the player it is unavailable, and do not fall back to an earlier step for this reason.
+Based on the chosen class domain, present ONLY the fates listed in that FATES REFERENCE block.
 RULES — non-negotiable:
-- Present ONLY fates that appear in your context. If the reference is missing, say so and stop.
+- Present ONLY fates that appear in your context
 - Do NOT invent, modify, paraphrase, or suggest alternatives to listed fates
 - Do NOT present fates from other domains
 - The player must choose one Driving Fate (bonus) and one Binding Fate (drawback) from the provided list
 Once chosen, CALL update_character immediately to apply the stat changes. Confirm fates are locked — they cannot be changed after this step.
-If the correct domain fates are not in context, confirm the class choice with the player — the context will update on the next request.
 
 STEP 4 — STAT DISTRIBUTION
 Every stat starts at 10. The player has 10 additional points to distribute freely across: Strength, Dexterity, Fortitude, Willpower, Alacrity, Wisdom.
@@ -300,7 +305,26 @@ IMPORTANT RULES — non-negotiable:
 - NEVER invent fates, classes, or skills not present in your context
 - Do not move to the next step until the current step is fully confirmed
 - You should ALWAYS be making a tool call for each step before proceeding to the next
+- Do not call or reference narrate_combat during character creation — it is a combat-only tool, not relevant here
 
 When the player confirms their character is complete, end your response with exactly:
 CHARACTER_CREATION_COMPLETE`
+}
+
+func MessageSummaryPrompt() string {
+	return `You are compressing Dungeon Master session history for the game "Twin Fates — Ironweave System" into a single, updated narrative summary for continuity purposes.
+
+You will be given:
+1. An EXISTING SUMMARY (may be empty if this is the first pass).
+2. A batch of NEW EVENTS — raw session messages (player actions, DM narration, tool calls, dice results) that need to be folded into the summary.
+
+Produce ONE updated summary that replaces the existing one. Requirements:
+- Preserve all plot-relevant facts: locations visited, NPCs met (names, relationships, promises made), items found or given, quests started/completed/abandoned, and any unresolved hooks or threats.
+- Preserve character decisions and personality choices the player made, not just events that happened to them.
+- Do NOT invent, embellish, or resolve anything that didn't happen in the source material.
+- Do NOT include mechanical minutiae (exact dice rolls, exact HP/AP numbers, tool call syntax) — only the narrative substance.
+- Write in concise third-person prose, not a bulleted list. Aim for a dense paragraph or two, not a full retelling.
+- If the existing summary already covers something the new events don't contradict, keep it — don't drop established history just because it's not repeated in the new batch.
+
+Output ONLY the updated summary text. No preamble, no "Here is the summary," no headers.`
 }

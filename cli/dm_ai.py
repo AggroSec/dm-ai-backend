@@ -19,6 +19,12 @@ SESSION_FILE = os.path.expanduser("~/.dm_ai_session")
 CREATION_COMPLETE_SIGNAL = "CHARACTER_CREATION_COMPLETE"
 
 
+class SessionExpiredError(Exception):
+    """Raised when there's no valid session (never logged in, or refresh failed).
+    Caught in the main loop so we route back to login instead of killing the CLI."""
+    pass
+
+
 # ─────────────────────────────────────────────
 # Session management
 # ─────────────────────────────────────────────
@@ -72,8 +78,7 @@ def refresh_jwt() -> bool:
 def auth_headers() -> dict:
     token = get_token()
     if not token:
-        print_error("Not logged in. Run: login")
-        sys.exit(1)
+        raise SessionExpiredError("Not logged in.")
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -83,9 +88,8 @@ def api_get(path: str) -> dict | list | None:
         if refresh_jwt():
             resp = requests.get(f"{BASE_URL}{path}", headers=auth_headers())
         else:
-            print_error("Session expired. Please login again.")
             clear_session()
-            sys.exit(1)
+            raise SessionExpiredError("Session expired.")
     if not resp.ok:
         print_error(f"Request failed: {resp.json().get('error', resp.text)}")
         return None
@@ -99,9 +103,8 @@ def api_post(path: str, body: dict, auth: bool = True) -> dict | None:
         if refresh_jwt():
             resp = requests.post(f"{BASE_URL}{path}", json=body, headers=auth_headers())
         else:
-            print_error("Session expired. Please login again.")
             clear_session()
-            sys.exit(1)
+            raise SessionExpiredError("Session expired.")
     if not resp.ok:
         print_error(f"Request failed: {resp.json().get('error', resp.text)}")
         return None
@@ -139,9 +142,8 @@ def api_stream_combat(path: str, body: dict) -> dict | None:
                 print_error(f"Request failed: {e}")
                 return None
         else:
-            print_error("Session expired. Please login again.")
             clear_session()
-            sys.exit(1)
+            raise SessionExpiredError("Session expired.")
 
     if not resp.ok:
         print_error(f"Request failed: {resp.status_code}")
@@ -268,6 +270,36 @@ def run_character_creation(campaign_id: str, character_id: str, first_message: s
 # ─────────────────────────────────────────────
 # Commands
 # ─────────────────────────────────────────────
+
+def cmd_register():
+    print("\n=== Register ===")
+    username = input("Choose a username: ").strip()
+    password = input("Choose a password: ").strip()
+    confirm = input("Confirm password: ").strip()
+
+    if password != confirm:
+        print_error("Passwords do not match.")
+        return
+
+    resp = api_post("/auth/register", {"username": username, "password": password}, auth=False)
+    if not resp:
+        return
+
+    print_system(f"Account created successfully. Welcome, {resp['username']}!")
+
+    # log them in right away so they don't have to re-enter credentials
+    login_resp = api_post("/auth/login", {"username": username, "password": password}, auth=False)
+    if not login_resp:
+        print_system("Registration succeeded, but automatic login failed. Please run 'login' manually.")
+        return
+
+    save_session({
+        "token": login_resp["token"],
+        "refresh_token": login_resp["refresh_token"],
+        "user_id": login_resp["user_id"],
+    })
+    print_system("You're now logged in. Type 'new' to start your first campaign.")
+
 
 def cmd_login():
     print("\n=== Login ===")
@@ -422,6 +454,7 @@ def cmd_help():
     print("""
 Twin Fates — Ironweave System CLI
 ──────────────────────────────────
+  register  Create a new account
   login     Log in to your account
   logout    Log out and revoke session
   new       Create a new campaign and character
@@ -447,9 +480,10 @@ def main():
     if session.get("token"):
         print_system("Session found. Type 'play' to continue your adventure or 'help' for commands.")
     else:
-        print_system("Welcome! Type 'login' to get started or 'help' for commands.")
+        print_system("Welcome! Type 'register' to create an account, 'login' if you already have one, or 'help' for commands.")
 
     commands = {
+        "register": cmd_register,
         "login": cmd_login,
         "logout": cmd_logout,
         "new": cmd_new_campaign,
@@ -469,6 +503,9 @@ def main():
                 commands[raw]()
             else:
                 print_error(f"Unknown command: '{raw}'. Type 'help' for available commands.")
+        except SessionExpiredError:
+            print_error("Your session has expired or you're not logged in. Please log in again.")
+            cmd_login()
         except KeyboardInterrupt:
             print("\n")
             print_system("Farewell, adventurer.")

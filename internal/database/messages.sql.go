@@ -12,6 +12,24 @@ import (
 	"github.com/google/uuid"
 )
 
+const countMessagesAfterSequence = `-- name: CountMessagesAfterSequence :one
+SELECT COUNT(*) FROM messages
+WHERE campaign_id = $1
+AND sequence > $2
+`
+
+type CountMessagesAfterSequenceParams struct {
+	CampaignID uuid.UUID
+	Sequence   int32
+}
+
+func (q *Queries) CountMessagesAfterSequence(ctx context.Context, arg CountMessagesAfterSequenceParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countMessagesAfterSequence, arg.CampaignID, arg.Sequence)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteMessagesByCampaign = `-- name: DeleteMessagesByCampaign :exec
 DELETE FROM messages
 WHERE campaign_id = $1

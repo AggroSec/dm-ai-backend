@@ -145,12 +145,13 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 	messages := msgs
 	var combatID *uuid.UUID
 	combatEnded := false
+	maxTokens := c.MaxTokens
 
 	for i := 0; i < maxIterations; i++ {
 		chatRequest := ChatRequest{
 			Model:     c.Model,
 			Messages:  messages,
-			MaxTokens: c.MaxTokens,
+			MaxTokens: maxTokens,
 			Tools:     tools,
 		}
 
@@ -285,6 +286,16 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 					combatEnded = true
 				}
 			}
+			continue
+		} else if chatResponse.Choices[0].FinishReason == "length" {
+			if maxTokens >= 8000 {
+				return "", nil, combatEnded, fmt.Errorf("response repeatedly hit max_tokens even after retrying with a higher limit (%d)", maxTokens)
+			}
+			maxTokens *= 2
+			if maxTokens > 8000 {
+				maxTokens = 8000
+			}
+			logInternalAI(fmt.Sprintf("response hit max_tokens, retrying with a higher limit (%d)", maxTokens))
 			continue
 		}
 	}

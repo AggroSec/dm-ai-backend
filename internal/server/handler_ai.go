@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -179,6 +180,13 @@ func (s *Server) handlerAIActionJSON(w http.ResponseWriter, r *http.Request, req
 
 	logAIInfo(fmt.Sprintf("request successfully processed for character: %v", req.CharacterID))
 	respondJSON(w, http.StatusOK, aiResponse)
+	if !req.CharacterCreation {
+		go func() {
+			if err := ai.MaybeSummarizeCampaign(context.Background(), s.db, s.aiClient, req.CampaignID); err != nil {
+				log.Printf(" | [Summarization] failed for campaign %v: %v", req.CampaignID, err)
+			}
+		}()
+	}
 }
 
 func (s *Server) handlerAIActionStream(w http.ResponseWriter, r *http.Request, req actionRequest) {
@@ -273,6 +281,12 @@ func (s *Server) handlerAIActionStream(w http.ResponseWriter, r *http.Request, r
 
 	fmt.Fprintf(w, "event: meta\ndata: %s\n\n", string(metaJSON))
 	flusher.Flush()
+
+	go func() {
+		if err := ai.MaybeSummarizeCampaign(context.Background(), s.db, s.aiClient, req.CampaignID); err != nil {
+			log.Printf(" | [Summarization] failed for campaign %v: %v", req.CampaignID, err)
+		}
+	}()
 
 	logAIInfo(fmt.Sprintf("request successfully processed for character: %v", req.CharacterID))
 }
