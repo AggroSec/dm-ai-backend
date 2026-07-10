@@ -45,7 +45,7 @@ type Function struct {
 }
 
 type ChatRequest struct {
-	Model     string    `json:"model"`
+	Models    []string  `json:"models"`
 	Messages  []Message `json:"messages"`
 	MaxTokens int       `json:"max_tokens"`
 	Tools     []Tool    `json:"tools,omitempty"`
@@ -57,10 +57,16 @@ type Tool struct {
 }
 
 type ChatResponse struct {
-	ID      string   `json:"id"`
-	Object  string   `json:"object"`
-	Choices []Choice `json:"choices"`
-	Usage   Usage    `json:"usage"`
+	ID      string    `json:"id"`
+	Object  string    `json:"object"`
+	Choices []Choice  `json:"choices"`
+	Usage   Usage     `json:"usage"`
+	Error   *APIError `json:"error,omitempty"`
+}
+
+type APIError struct {
+	Message string `json:"message"`
+	Code    int    `json:"code"`
 }
 
 type Choice struct {
@@ -75,30 +81,36 @@ type Usage struct {
 }
 
 type Client struct {
-	HTTPClient *http.Client
-	APIKey     string
-	Model      string
-	MaxTokens  int
-	URL        string
-	db         *database.Queries
+	HTTPClient  *http.Client
+	APIKey      string
+	Model       string
+	CombatModel string
+	MaxTokens   int
+	URL         string
+	db          *database.Queries
 }
 
 type StreamCallback func(text string)
 
 func NewClient(cfg config.Config, db *database.Queries) *Client {
 	return &Client{
-		HTTPClient: &http.Client{},
-		APIKey:     cfg.OpenRouterAPIKey,
-		Model:      cfg.OpenRouterModel,
-		MaxTokens:  cfg.OpenRouterMaxTokens,
-		URL:        openRouterAPIURL,
-		db:         db,
+		HTTPClient:  &http.Client{},
+		APIKey:      cfg.OpenRouterAPIKey,
+		Model:       cfg.OpenRouterModel,
+		CombatModel: cfg.OpenRouterCombatModel,
+		MaxTokens:   cfg.OpenRouterMaxTokens,
+		URL:         openRouterAPIURL,
+		db:          db,
 	}
+}
+
+func (c *Client) modelPriority(primary string) []string {
+	return []string{primary, "openrouter/free"}
 }
 
 func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 	chatRequest := ChatRequest{
-		Model:     c.Model,
+		Models:    c.modelPriority(c.Model),
 		Messages:  msgs,
 		MaxTokens: c.MaxTokens,
 	}
@@ -134,14 +146,17 @@ func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 		return "", err
 	}
 
+	if chatResponse.Error != nil {
+		return "", fmt.Errorf("openrouter upstream error (%d): %s", chatResponse.Error.Code, chatResponse.Error.Message)
+	}
 	if len(chatResponse.Choices) == 0 {
-		return "", fmt.Errorf("no choices returned from openrouter")
+		return "", fmt.Errorf("openrouter returned empty choices with no error field — unknown cause")
 	}
 
 	return chatResponse.Choices[0].Message.Content, nil
 }
 
-func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool, dispatcher *Dispatcher, streamFn StreamCallback) (string, *uuid.UUID, bool, error) {
+func (c *Client) ChatWithTools(ctx context.Context, model string, msgs []Message, tools []Tool, dispatcher *Dispatcher, streamFn StreamCallback) (string, *uuid.UUID, bool, error) {
 	messages := msgs
 	var combatID *uuid.UUID
 	combatEnded := false
@@ -149,7 +164,7 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 
 	for i := 0; i < maxIterations; i++ {
 		chatRequest := ChatRequest{
-			Model:     c.Model,
+			Models:    c.modelPriority(model),
 			Messages:  messages,
 			MaxTokens: maxTokens,
 			Tools:     tools,
@@ -196,8 +211,12 @@ func (c *Client) ChatWithTools(ctx context.Context, msgs []Message, tools []Tool
 		if err := json.Unmarshal(rawResponse, &chatResponse); err != nil {
 			return "", nil, combatEnded, err
 		}
+
+		if chatResponse.Error != nil {
+			return "", nil, combatEnded, fmt.Errorf("openrouter upstream error (%d): %s", chatResponse.Error.Code, chatResponse.Error.Message)
+		}
 		if len(chatResponse.Choices) == 0 {
-			return "", nil, combatEnded, fmt.Errorf("openrouter returned empty choices — context may be full")
+			return "", nil, combatEnded, fmt.Errorf("openrouter returned empty choices with no error field — unknown cause")
 		}
 
 		log.Printf(" | [DEBUG] finish_reason: %s", chatResponse.Choices[0].FinishReason)

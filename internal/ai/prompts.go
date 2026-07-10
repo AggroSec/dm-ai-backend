@@ -312,19 +312,19 @@ CHARACTER_CREATION_COMPLETE`
 }
 
 func MessageSummaryPrompt() string {
-	return `You are compressing Dungeon Master session history for the game "Twin Fates — Ironweave System" into a single, updated narrative summary for continuity purposes.
+	return `You are writing the next chapter of an ongoing narrative summary for the Dungeon Master game "Twin Fates — Ironweave System."
 
 You will be given:
-1. An EXISTING SUMMARY (may be empty if this is the first pass).
-2. A batch of NEW EVENTS — raw session messages (player actions, DM narration, tool calls, dice results) that need to be folded into the summary.
+1. EXISTING SUMMARY — the story so far, already written. This is READ-ONLY context so your new paragraph flows naturally from it. Do NOT repeat, rewrite, rephrase, or summarize it. It may be empty if this is the very first pass.
+2. NEW EVENTS — raw session messages (player actions, DM narration) that have not yet been folded into the story.
 
-Produce ONE updated summary that replaces the existing one. Requirements:
+Write EXACTLY ONE new paragraph that continues the story, covering only the NEW EVENTS. Requirements:
 - Preserve all plot-relevant facts: locations visited, NPCs met (names, relationships, promises made), items found or given, quests started/completed/abandoned, and any unresolved hooks or threats.
 - Preserve character decisions and personality choices the player made, not just events that happened to them.
 - Do NOT invent, embellish, or resolve anything that didn't happen in the source material.
 - Do NOT include mechanical minutiae (exact dice rolls, exact HP/AP numbers, tool call syntax) — only the narrative substance.
-- Write in concise third-person prose, not a bulleted list. Aim for a dense paragraph or two, not a full retelling.
-- If the existing summary already covers something the new events don't contradict, keep it — don't drop established history just because it's not repeated in the new batch.
+- Write in concise third-person prose, not a bulleted list.
+- Do NOT reference or repeat anything already covered in the EXISTING SUMMARY — assume the reader already knows it. Your paragraph picks up exactly where it left off.
 
-Output ONLY the updated summary text. No preamble, no "Here is the summary," no headers.`
+Output ONLY the new paragraph text. No preamble, no "Here is the next paragraph," no headers, no reference back to earlier chapters.`
 }

@@ -33,8 +33,6 @@ func (c *Client) SummarizeMessages(ctx context.Context, existingSummary string, 
 			if msg.Content != "" {
 				fmt.Fprintf(&eventsText, "DM: %s\n", msg.Content)
 			}
-		case "tool":
-			fmt.Fprintf(&eventsText, "Tool result: %s\n", msg.Content)
 		}
 	}
 
@@ -87,22 +85,23 @@ func MaybeSummarizeCampaign(ctx context.Context, db *database.Queries, aiClient 
 		aiMsgs = append(aiMsgs, dbToAIMessage(msg))
 	}
 
-	newSummary, err := aiClient.SummarizeMessages(ctx, currentSummary, aiMsgs)
+	newParagraph, err := aiClient.SummarizeMessages(ctx, currentSummary, aiMsgs)
 	if err != nil {
 		return err
 	}
+	narrativeSummary := currentSummary + "\n\n" + newParagraph
 
 	_, err = db.UpdateNarrativeSummary(ctx, database.UpdateNarrativeSummaryParams{
 		ID:                campaignID,
-		NarrativeSummary:  newSummary,
+		NarrativeSummary:  narrativeSummary,
 		SummarizedThrough: toFold[len(toFold)-1].Sequence,
 	})
 	if err != nil {
 		return err
 	}
 
-	logAISummarization(fmt.Sprintf("Campaign %s: updated narrative summary to %d characters", campaignID, len(newSummary)))
-	logAISummarization(fmt.Sprintf("New Summary:\n%s", newSummary))
+	logAISummarization(fmt.Sprintf("Campaign %s: updated narrative summary to %d characters", campaignID, len(narrativeSummary)))
+	logAISummarization(fmt.Sprintf("New Summary:\n%s", narrativeSummary))
 	return nil
 }
 

@@ -9,18 +9,19 @@ import (
 )
 
 type Config struct {
-	DBURL               string
-	JWTSecret           string
-	JWTExpiry           time.Duration
-	JWTRefreshExpiry    time.Duration
-	InternalSecret      string
-	OpenRouterAPIKey    string
-	OpenRouterModel     string
-	OpenRouterMaxTokens int
-	Port                string
-	AppEnv              string
-	DataDir             string
-	DebugLogging        bool
+	DBURL                 string
+	JWTSecret             string
+	JWTExpiry             time.Duration
+	JWTRefreshExpiry      time.Duration
+	InternalSecret        string
+	OpenRouterAPIKey      string
+	OpenRouterModel       string
+	OpenRouterCombatModel string
+	OpenRouterMaxTokens   int
+	Port                  string
+	AppEnv                string
+	DataDir               string
+	DebugLogging          bool
 }
 
 func LoadConfig() (*Config, error) {
@@ -31,6 +32,7 @@ func LoadConfig() (*Config, error) {
 	cfg.InternalSecret = requireEnv("INTERNAL_SECRET")
 	cfg.OpenRouterAPIKey = requireEnv("OPENROUTER_API_KEY")
 	cfg.OpenRouterModel = requireEnv("OPENROUTER_MODEL")
+	cfg.OpenRouterCombatModel = requireEnv("OPENROUTER_COMBAT_MODEL")
 	cfg.DataDir = requireEnv("DATA_DIR")
 	cfg.DebugLogging = parseBool("DEBUG_LOGGING")
 

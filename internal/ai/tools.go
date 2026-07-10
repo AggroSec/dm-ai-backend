@@ -13,7 +13,56 @@ type Property struct {
 	Properties  map[string]Property `json:"properties,omitempty"`
 }
 
-func GetToolDefinitions() []Tool {
+type GameMode string
+
+const (
+	ModeNarrative         GameMode = "narrative"
+	ModeCombat            GameMode = "combat"
+	ModeCharacterCreation GameMode = "character_creation"
+)
+
+var narrativeTools = map[string]bool{
+	"start_combat": true, "request_roll": true, "apply_damage": true,
+	"apply_heal": true, "apply_status_effect": true, "remove_status_effect": true,
+	"action_failed": true, "award_xp": true, "give_item": true,
+	"equip_item": true, "rest": true, "get_character": true, "get_skills": true,
+	"update_character": true,
+}
+
+var combatTools = map[string]bool{
+	"end_combat": true, "skip_turn": true, "apply_damage": true,
+	"request_roll": true, "validate_action": true, "apply_status_effect": true,
+	"get_combat_state": true, "action_failed": true, "award_xp": true,
+	"apply_heal": true, "get_character": true, "get_skills": true,
+	"remove_status_effect": true, "equip_item": true, "end_turn": true,
+	"narrate_combat": true, "update_character": true,
+}
+
+var characterCreationTools = map[string]bool{
+	"update_character": true, "give_item": true, "equip_item": true,
+}
+
+func GetToolDefinitions(mode GameMode) []Tool {
+	var allowed map[string]bool
+	switch mode {
+	case ModeCombat:
+		allowed = combatTools
+	case ModeCharacterCreation:
+		allowed = characterCreationTools
+	default:
+		allowed = narrativeTools
+	}
+
+	var filtered []Tool
+	for _, tool := range allTools() {
+		if allowed[tool.Function.Name] {
+			filtered = append(filtered, tool)
+		}
+	}
+	return filtered
+}
+
+func allTools() []Tool {
 	return []Tool{
 		{
 			Type: "function",
