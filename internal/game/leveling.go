@@ -23,9 +23,9 @@ const (
 	LevelUpInstructions  = `Character has leveled up. Take the following steps in order:
 1. Call get_skills to retrieve the full skill tree and present available skills to the player organized by branch.
 2. Wait for the player to choose how to invest their talent points. Call update_character with the updated talents_invested array once decided.
-3. Inform the player they have %d stat points to distribute across: Strength, Dexterity, Fortitude, Willpower, Alacrity, Wisdom. Current stats are visible on the character sheet.
-4. Wait for the player to allocate their stat points. Call update_character with the final stat values once decided.
-5. Confirm level up is complete by presenting the full charactersheet to the player and continue the story.`
+3. Inform the player they have %d stat points to distribute across: Strength, Dexterity, Fortitude, Willpower, Alacrity, Wisdom. Use the BASE stats from the character sheet as the starting point — never the effective/with-equipment stats.
+4. Wait for the player to allocate their stat points. Call update_character with the new BASE stat totals (old base value + points the player assigned to that stat). Do NOT include any equipment bonuses in the values you send — the system applies those automatically on top of whatever base value you set, so including them will double-count the bonus.
+5. Confirm level up is complete by presenting the full character sheet to the player and continue the story.`
 )
 
 func AwardXP(ctx context.Context, db *database.Queries, characterID uuid.UUID, amount int) (XPAwardResult, error) {

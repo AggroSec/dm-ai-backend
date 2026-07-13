@@ -275,23 +275,27 @@ func getClassDomain(class string) string {
 }
 
 func CreateCharacterContext(character database.Character) string {
-	str, dex, fort, wil, alc, wis := game.GetEffectiveStats(character)
+	effStr, effDex, effFort, effWil, effAlc, effWis := game.GetEffectiveStats(character)
 	return fmt.Sprintf(
 		"CHARACTER SHEET\n"+
 			"ID: %s\n"+
 			"Name: %s | Race: %s | Class: %s | Level: %d\n"+
 			"Fates — Driving: %s | Binding: %s\n"+
-			"Stats — STR: %d | DEX: %d | FOR: %d | WIL: %d | ALC: %d | WIS: %d\n"+
+			"Base Stats (use these for leveling/stat distribution — NEVER add equipment bonuses when calling update_character) — STR: %d | DEX: %d | FOR: %d | WIL: %d | ALC: %d | WIS: %d\n"+
+			"Effective Stats, with equipment bonuses applied (use these for combat math like AC/damage — do NOT use these when updating a character's stats) — STR: %d | DEX: %d | FOR: %d | WIL: %d | ALC: %d | WIS: %d\n"+
 			"HP: %d/%d | WP: %d/%d | AP: %d (max: %d, overcap: %d)\n"+
-			"XP: %d | Talent Points Available: %d",
+			"XP: %d | Talent Points Available: %d\n"+
+			"Effective Modifiers (use these directly for attack rolls, damage, and checks — do NOT recompute stat/5 yourself) — STR: %+d | DEX: %+d | FOR: %+d | WIL: %+d | ALC: %+d | WIS: %+d\n",
 		character.ID,
 		character.Name, character.Race, character.Class, character.Level,
 		character.DrivingFate, character.BindingFate,
-		str, dex, fort, wil, alc, wis,
+		character.Strength, character.Dexterity, character.Fortitude, character.Willpower, character.Alacrity, character.Wisdom,
+		effStr, effDex, effFort, effWil, effAlc, effWis,
 		character.CurrentHp, character.MaxHp,
 		character.CurrentWp, character.MaxWp,
 		character.ActionPoints, character.MaxAp, character.OvercapAp,
 		character.Experience, character.TalentPointsAvailable,
+		game.GetModifier(effStr), game.GetModifier(effDex), game.GetModifier(effFort), game.GetModifier(effWil), game.GetModifier(effAlc), game.GetModifier(effWis),
 	)
 }
 
@@ -317,10 +321,12 @@ func GetCombatState(session game.CombatSession) string {
 		fmt.Fprintf(&sb,
 			"[%s] %s (ID: %s) — %s\n"+
 				"  HP: %d/%d | WP: %d/%d | AP: %d/%d (overcap: %d)\n"+
-				"  STR: %d | DEX: %d | FOR: %d | WIL: %d | ALC: %d | WIS: %d\n",
+				"  STR: %d | DEX: %d | FOR: %d | WIL: %d | ALC: %d | WIS: %d\n"+
+				"  Modifiers (use these directly, do NOT recompute) — STR: %+d | DEX: %+d | FOR: %+d | WIL: %+d | ALC: %+d | WIS: %+d\n",
 			c.Type, c.Name, c.ID, alive,
 			c.HP, c.MaxHP, c.WP, c.MaxWP, c.AP, c.MaxAP, c.OvercapAP,
 			c.Strength, c.Dexterity, c.Fortitude, c.Willpower, c.Alacrity, c.Wisdom,
+			game.GetModifier(c.Strength), game.GetModifier(c.Dexterity), game.GetModifier(c.Fortitude), game.GetModifier(c.Willpower), game.GetModifier(c.Alacrity), game.GetModifier(c.Wisdom),
 		)
 		if len(c.StatusEffects) > 0 {
 			sb.WriteString("  Status Effects:\n")

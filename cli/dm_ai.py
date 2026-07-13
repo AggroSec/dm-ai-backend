@@ -111,11 +111,12 @@ def api_post(path: str, body: dict, auth: bool = True) -> dict | None:
     return resp.json()
 
 
-def api_stream_combat(path: str, body: dict) -> dict | None:
+def api_stream_combat(path: str, body: dict) -> tuple[dict | None, bool]:
     """
     POST to path with SSE streaming for combat only.
     Prints narrative chunks as they arrive.
-    Returns meta dict containing combat_id, combat_ended etc.
+    Returns (meta, had_error). meta is a dict containing combat_id, combat_ended, etc.
+    had_error is True if the stream failed or the server sent an "event: error".
     """
     headers = auth_headers()
     try:
@@ -127,7 +128,7 @@ def api_stream_combat(path: str, body: dict) -> dict | None:
         )
     except requests.exceptions.RequestException as e:
         print_error(f"Request failed: {e}")
-        return None
+        return None, True
 
     if resp.status_code == 401:
         if refresh_jwt():
@@ -140,17 +141,18 @@ def api_stream_combat(path: str, body: dict) -> dict | None:
                 )
             except requests.exceptions.RequestException as e:
                 print_error(f"Request failed: {e}")
-                return None
+                return None, True
         else:
             clear_session()
             raise SessionExpiredError("Session expired.")
 
     if not resp.ok:
         print_error(f"Request failed: {resp.status_code}")
-        return None
+        return None, True
 
     resp.encoding = 'utf-8'
     meta = None
+    had_error = False
     current_event = None
     print()
     print_divider()
@@ -166,29 +168,31 @@ def api_stream_combat(path: str, body: dict) -> dict | None:
 
         if raw_line.startswith("data:"):
             data = raw_line[len("data:"):].strip()
-            data = data.replace("\\n", "\n")
 
             if current_event == "meta":
                 try:
                     meta = json.loads(data)
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    print_error(f"Could not parse server response ({e}). Raw data: {data[:200]}")
+                    had_error = True
 
             elif current_event == "error":
                 print_error(f"Server error: {data}")
+                had_error = True
 
             else:
-                # narrative chunk — print as it arrives
+                # narrative chunk — unescape the literal \n markers used for
+                # multi-line narrate_combat text, then print as it arrives
+                data = data.replace("\\n", "\n")
                 for paragraph in data.split("\n"):
                     if paragraph.strip():
                         print(textwrap.fill(paragraph.strip(), width=70))
                     else:
                         print()
-
     print_divider()
     print()
 
-    return meta
+    return meta, had_error
 
 
 # ─────────────────────────────────────────────
@@ -421,7 +425,15 @@ def run_narrative_loop(campaign_id: str, character_id: str, combat_id: str | Non
 
         # combat uses SSE streaming, narrative uses regular JSON
         if combat_id:
-            meta = api_stream_combat("/ai/action", body)
+            meta, had_error = api_stream_combat("/ai/action", body)
+
+            if had_error:
+                # Can't trust combat_id is still valid after any stream failure —
+                # drop back to narrative mode instead of repeating the same failure forever.
+                combat_id = None
+                print_system("Something went wrong resolving that action. Returning to narrative mode — please try again.")
+                continue
+
             if meta is None:
                 continue
 

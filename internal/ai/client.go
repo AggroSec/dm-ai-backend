@@ -17,7 +17,7 @@ import (
 
 const (
 	openRouterAPIURL = "https://openrouter.ai/api/v1/chat/completions"
-	maxIterations    = 20
+	maxIterations    = 50
 )
 
 type Message struct {
@@ -59,6 +59,7 @@ type Tool struct {
 type ChatResponse struct {
 	ID      string    `json:"id"`
 	Object  string    `json:"object"`
+	Model   string    `json:"model"`
 	Choices []Choice  `json:"choices"`
 	Usage   Usage     `json:"usage"`
 	Error   *APIError `json:"error,omitempty"`
@@ -104,13 +105,13 @@ func NewClient(cfg config.Config, db *database.Queries) *Client {
 	}
 }
 
-func (c *Client) modelPriority(primary string) []string {
-	return []string{primary, "openrouter/free"}
+func (c *Client) modelPriority(primary, secondary string) []string {
+	return []string{primary, secondary, "openrouter/free"}
 }
 
 func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 	chatRequest := ChatRequest{
-		Models:    c.modelPriority(c.Model),
+		Models:    c.modelPriority(c.Model, c.CombatModel),
 		Messages:  msgs,
 		MaxTokens: c.MaxTokens,
 	}
@@ -156,7 +157,7 @@ func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 	return chatResponse.Choices[0].Message.Content, nil
 }
 
-func (c *Client) ChatWithTools(ctx context.Context, model string, msgs []Message, tools []Tool, dispatcher *Dispatcher, streamFn StreamCallback) (string, *uuid.UUID, bool, error) {
+func (c *Client) ChatWithTools(ctx context.Context, primaryModel, secondaryModel string, msgs []Message, tools []Tool, dispatcher *Dispatcher, streamFn StreamCallback) (string, *uuid.UUID, bool, error) {
 	messages := msgs
 	var combatID *uuid.UUID
 	combatEnded := false
@@ -164,7 +165,7 @@ func (c *Client) ChatWithTools(ctx context.Context, model string, msgs []Message
 
 	for i := 0; i < maxIterations; i++ {
 		chatRequest := ChatRequest{
-			Models:    c.modelPriority(model),
+			Models:    c.modelPriority(primaryModel, secondaryModel),
 			Messages:  messages,
 			MaxTokens: maxTokens,
 			Tools:     tools,
@@ -221,6 +222,7 @@ func (c *Client) ChatWithTools(ctx context.Context, model string, msgs []Message
 
 		log.Printf(" | [DEBUG] finish_reason: %s", chatResponse.Choices[0].FinishReason)
 		log.Printf(" | [DEBUG] tool_calls: %v", chatResponse.Choices[0].Message.ToolCalls)
+		log.Printf(" | [DEBUG] model used: %s", chatResponse.Model)
 
 		if chatResponse.Choices[0].FinishReason == "stop" {
 			msg := chatResponse.Choices[0].Message.Content

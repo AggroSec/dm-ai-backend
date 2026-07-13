@@ -2,12 +2,14 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/AggroSec/dm-ai-backend/internal/auth"
 	"github.com/AggroSec/dm-ai-backend/internal/database"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type registerRequest struct {
@@ -58,6 +60,12 @@ func (s *Server) handlerRegisterUser(w http.ResponseWriter, r *http.Request) {
 
 	createdUser, err := s.db.CreateUser(r.Context(), registerInfo)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			log.Printf(" | registration attempted with duplicate username: %v", req.Username)
+			respondError(w, http.StatusConflict, "username already taken")
+			return
+		}
 		log.Printf(" | user was not created: %v", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")
 		return

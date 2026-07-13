@@ -73,7 +73,7 @@ func (s *Server) handlerAITestTools(w http.ResponseWriter, r *http.Request) {
 		Role:    "system",
 		Content: "You are a test assistant. When the user asks you to roll a dice, call the request_roll tool",
 	}
-	resp, _, _, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.Model, []ai.Message{systemPrompt, msg}, ai.GetToolDefinitions(ai.ModeNarrative), nil, nil)
+	resp, _, _, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.Model, s.aiClient.CombatModel, []ai.Message{systemPrompt, msg}, ai.GetToolDefinitions(ai.ModeNarrative), nil, nil)
 	if err != nil {
 		logAIError("AI chat error", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")
@@ -161,7 +161,7 @@ func (s *Server) handlerAIActionJSON(w http.ResponseWriter, r *http.Request, req
 	}
 
 	dispatcher := ai.NewDispatcher(s.db, s.cfg, req.CampaignID)
-	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.Model, aiContext, ai.GetToolDefinitions(mode), dispatcher, nil)
+	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.Model, s.aiClient.CombatModel, aiContext, ai.GetToolDefinitions(mode), dispatcher, nil)
 	if err != nil {
 		logAIError("Chat call failed", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")
@@ -255,7 +255,7 @@ func (s *Server) handlerAIActionStream(w http.ResponseWriter, r *http.Request, r
 	}
 
 	dispatcher := ai.NewDispatcher(s.db, s.cfg, req.CampaignID)
-	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.CombatModel, aiContext, ai.GetToolDefinitions(ai.ModeCombat), dispatcher, streamFn)
+	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.CombatModel, s.aiClient.Model, aiContext, ai.GetToolDefinitions(ai.ModeCombat), dispatcher, streamFn)
 	if err != nil {
 		logAIError("Chat call failed", err)
 		fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())
