@@ -19,7 +19,7 @@ This is a boot.dev capstone project, built solo, end to end — backend, game en
 
 *Sped up for time — but you can still see combat narration streaming in live via SSE as the NPC takes its turn, rather than waiting on one big blocking response of all actions taken.*
 
-## 💭 Why I Built This
+## 💭 Motivation
 
 There were a few motivations behind this project. In an earlier boot.dev project, I built a heavily D&D-inspired choose-your-own-adventure system that anyone could modify, extend, and play entirely through text in the command line ([PythonicDragons](https://github.com/AggroSec/PythonicDragons)). That project got me wanting to build something similar in Go, which I'd just started learning.
 
@@ -70,7 +70,7 @@ A Seer who dumps Fortitude and Dexterity is a glass cannon — valid, but the ga
 
 ## 🤖 A Note on AI Model Quality
 
-This project runs on free OpenRouter models by design (see [Configuration](#getting-started)), and model quality **varies a lot** between them — sometimes dramatically, even between two models that both claim tool-calling support. Narrative flavor and, especially, combat reliability (correct tool sequencing, respecting AP/HP rules, not hallucinating mechanics) have differed noticeably from one free model to the next in testing, and the "best" model can shift over time as providers update or retire them.
+This project runs on free OpenRouter models by design (see Quick Start below), and model quality **varies a lot** between them — sometimes dramatically, even between two models that both claim tool-calling support. Narrative flavor and, especially, combat reliability (correct tool sequencing, respecting AP/HP rules, not hallucinating mechanics) have differed noticeably from one free model to the next in testing, and the "best" model can shift over time as providers update or retire them.
 
 If combat starts ignoring rules, dishing out inconsistent damage, or the DM seems to be "forgetting" tools it should be calling — try swapping `OPENROUTER_MODEL` / `OPENROUTER_COMBAT_MODEL` before assuming the backend is broken. The tool-calling loop, validation, and state management are all model-agnostic; the model itself is doing all the actual reasoning about *when* to call what. Combat asks a lot more of a model than freeform narrative does, which is exactly why narrative and combat get independently configurable models instead of one shared setting.
 
@@ -82,7 +82,7 @@ If combat starts ignoring rules, dishing out inconsistent damage, or the DM seem
 - **CLI Client:** Python 3, `requests`
 - **Auth:** JWT (access + refresh tokens)
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
 
@@ -92,6 +92,7 @@ If combat starts ignoring rules, dishing out inconsistent damage, or the DM seem
 - [sqlc](https://sqlc.dev) if you plan to modify queries
 - An [OpenRouter](https://openrouter.ai) API key (free tier works — see the model quality note above)
 - Python 3 + `pip` for the CLI
+- [`make`](https://www.gnu.org/software/make/) — usually pre-installed on Linux/macOS; on Windows, use WSL or install via [Chocolatey](https://chocolatey.org/) (`choco install make`)
 
 ### Setup
 
@@ -135,7 +136,9 @@ If combat starts ignoring rules, dishing out inconsistent damage, or the DM seem
 | `make test` | Run Go tests |
 | `make dbcon` | Open a `psql` shell against the configured database |
 
-### Playing via the CLI
+## 📖 Usage
+
+Once the server's running, play through the Python CLI:
 
 ```bash
 cd cli
@@ -199,6 +202,33 @@ Things on the roadmap beyond the capstone, roughly in the order they'd get tackl
 - 🖥️ **A real front-end** — something beyond the CLI, whether a lightweight web client or a Godot-based app, so it's easier to hand to someone who isn't comfortable in a terminal.
 - 🧬 **Embeddings / RAG** — proper semantic retrieval over full campaign history, for near-complete long-term recall once the free-tier-friendly approaches above stop being enough.
 - 📜 **Licensing follow-up** — exploring dual-licensing (AGPL-3.0 public base + a separate commercial license) if this grows past a pet project.
+
+## 🤝 Contributing
+
+### Clone the repo
+
+```bash
+git clone https://github.com/AggroSec/dm-ai-backend.git
+cd dm-ai-backend
+```
+
+### Build the compiled binary
+
+```bash
+make build
+```
+
+See [Quick Start](#-quick-start) above for full environment setup before building.
+
+### Run the test suite
+
+```bash
+make test
+```
+
+### Submit a pull request
+
+If you'd like to contribute, please fork the repository and open a pull request against the `main` branch.
 
 ## 📜 License
 
