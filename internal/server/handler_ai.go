@@ -73,7 +73,7 @@ func (s *Server) handlerAITestTools(w http.ResponseWriter, r *http.Request) {
 		Role:    "system",
 		Content: "You are a test assistant. When the user asks you to roll a dice, call the request_roll tool",
 	}
-	resp, _, _, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.Model, s.aiClient.CombatModel, []ai.Message{systemPrompt, msg}, ai.GetToolDefinitions(ai.ModeNarrative), nil, nil)
+	resp, _, _, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.Model, s.aiClient.CombatModel, []ai.Message{systemPrompt, msg}, ai.GetToolDefinitions(ai.ModeNarrative), nil, nil, nil)
 	if err != nil {
 		logAIError("AI chat error", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")
@@ -160,8 +160,16 @@ func (s *Server) handlerAIActionJSON(w http.ResponseWriter, r *http.Request, req
 		}
 	}
 
+	var refreshFn func(context.Context) ([]ai.Message, error)
+	if req.CharacterCreation {
+		charID := req.CharacterID
+		refreshFn = func(ctx context.Context) ([]ai.Message, error) {
+			return ai.BuildCharacterCreationSystemMessages(s.cfg, charID, ctx, s.db)
+		}
+	}
+
 	dispatcher := ai.NewDispatcher(s.db, s.cfg, req.CampaignID)
-	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.Model, s.aiClient.CombatModel, aiContext, ai.GetToolDefinitions(mode), dispatcher, nil)
+	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.Model, s.aiClient.CombatModel, aiContext, ai.GetToolDefinitions(mode), dispatcher, nil, refreshFn)
 	if err != nil {
 		logAIError("Chat call failed", err)
 		respondError(w, http.StatusInternalServerError, "internal server error")
@@ -255,7 +263,7 @@ func (s *Server) handlerAIActionStream(w http.ResponseWriter, r *http.Request, r
 	}
 
 	dispatcher := ai.NewDispatcher(s.db, s.cfg, req.CampaignID)
-	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.CombatModel, s.aiClient.Model, aiContext, ai.GetToolDefinitions(ai.ModeCombat), dispatcher, streamFn)
+	resp, newCombatID, combatEnded, err := s.aiClient.ChatWithTools(r.Context(), s.aiClient.CombatModel, s.aiClient.Model, aiContext, ai.GetToolDefinitions(ai.ModeCombat), dispatcher, streamFn, nil)
 	if err != nil {
 		logAIError("Chat call failed", err)
 		fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())

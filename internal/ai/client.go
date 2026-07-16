@@ -157,7 +157,7 @@ func (c *Client) Chat(ctx context.Context, msgs []Message) (string, error) {
 	return chatResponse.Choices[0].Message.Content, nil
 }
 
-func (c *Client) ChatWithTools(ctx context.Context, primaryModel, secondaryModel string, msgs []Message, tools []Tool, dispatcher *Dispatcher, streamFn StreamCallback) (string, *uuid.UUID, bool, error) {
+func (c *Client) ChatWithTools(ctx context.Context, primaryModel, secondaryModel string, msgs []Message, tools []Tool, dispatcher *Dispatcher, streamFn StreamCallback, refreshFn func(context.Context) ([]Message, error)) (string, *uuid.UUID, bool, error) {
 	messages := msgs
 	var combatID *uuid.UUID
 	combatEnded := false
@@ -305,6 +305,15 @@ func (c *Client) ChatWithTools(ctx context.Context, primaryModel, secondaryModel
 				logInternalAI("tool call finished")
 				if toolCall.Function.Name == "end_combat" {
 					combatEnded = true
+				}
+				if toolCall.Function.Name == "update_character" && refreshFn != nil {
+					refreshed, err := refreshFn(ctx)
+					if err != nil {
+						logInternalAI(fmt.Sprintf("failed to refresh context after update_character: %v", err))
+					} else if len(refreshed) <= len(messages) {
+						messages = append(refreshed, messages[len(refreshed):]...)
+						logInternalAI("character-creation context refreshed after update_character")
+					}
 				}
 			}
 			continue

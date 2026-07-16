@@ -349,3 +349,35 @@ func GetSkillsContext(skills []game.Skill, characterID uuid.UUID) string {
 
 	return sb.String()
 }
+
+// BuildCharacterCreationSystemMessages rebuilds just the leading system-context
+// block used during character creation (system prompt, character sheet, class
+// reference, fates reference) by re-reading the character fresh from the DB.
+// Used to refresh stale context mid-loop after a tool call (e.g. update_character
+// changing class) without re-walking the full message history.
+func BuildCharacterCreationSystemMessages(cfg *config.Config, characterID uuid.UUID, ctx context.Context, db *database.Queries) ([]Message, error) {
+	character, err := db.GetCharacterByID(ctx, characterID)
+	if err != nil {
+		return nil, err
+	}
+
+	classReference, err := BuildClassReferenceContext(cfg.DataDir)
+	if err != nil {
+		return nil, err
+	}
+
+	classDomain := getClassDomain(character.Class)
+	fatesReference, err := BuildFatesReferenceContext(cfg.DataDir, classDomain)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf(" | [DEBUG] context refreshed - class: %s domain: %s fates context: %s", character.Class, classDomain, fatesReference[:100])
+
+	return []Message{
+		{Role: "system", Content: CharacterCreationSystemPrompt()},
+		{Role: "system", Content: CreateCharacterContext(character)},
+		{Role: "system", Content: classReference},
+		{Role: "system", Content: fatesReference},
+	}, nil
+}

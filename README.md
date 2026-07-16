@@ -6,6 +6,27 @@ This is a boot.dev capstone project, built solo, end to end — backend, game en
 
 🧙 Step into a world. Roll the dice. Let the story go somewhere you didn't plan.
 
+## 🎬 See It In Action
+
+**Character Creation:**
+![Character creation demo](demo/character_creation.gif)
+
+**Roleplay:**
+![Roleplay demo](demo/roleplay.gif)
+
+**Combat:**
+![Combat demo](demo/combat.gif)
+
+*Sped up for time — but you can still see combat narration streaming in live via SSE as the NPC takes its turn, rather than waiting on one big blocking response of all actions taken.*
+
+## 💭 Why I Built This
+
+There were a few motivations behind this project. In an earlier boot.dev project, I built a heavily D&D-inspired choose-your-own-adventure system that anyone could modify, extend, and play entirely through text in the command line ([PythonicDragons](https://github.com/AggroSec/PythonicDragons)). That project got me wanting to build something similar in Go, which I'd just started learning.
+
+Around the same time, I'd been trying out a few AI Dungeon Master-style games — interesting ideas, but usually rough around the edges or locked behind paywalls. I also tried running solo tabletop sessions with regular LLM chatbots, and kept running into the same problem: the AI was constantly fudging numbers, making up rules and outcomes on the fly. There was no real game underneath the story.
+
+So I set out to build my own AI dungeon master — one where the numbers are actually real. That's what became the Golden Rule this project is built around: the AI narrates, but Go owns every roll, every point of damage, every stat.
+
 ## 🏆 The Golden Rule
 
 If it affects a **number**, Go owns it. If it affects a **sentence**, the AI owns it.
