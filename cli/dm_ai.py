@@ -4,6 +4,7 @@ Twin Fates — Ironweave System
 DM AI Command Line Interface
 """
 
+from getpass import getpass
 import json
 import os
 import sys
@@ -17,6 +18,7 @@ import textwrap
 BASE_URL = os.getenv("DM_AI_URL", "http://localhost:8080")
 SESSION_FILE = os.path.expanduser("~/.dm_ai_session")
 CREATION_COMPLETE_SIGNAL = "CHARACTER_CREATION_COMPLETE"
+MIN_PASSWORD_LENGTH = 15
 
 
 class SessionExpiredError(Exception):
@@ -278,8 +280,11 @@ def run_character_creation(campaign_id: str, character_id: str, first_message: s
 def cmd_register():
     print("\n=== Register ===")
     username = input("Choose a username: ").strip()
-    password = input("Choose a password: ").strip()
-    confirm = input("Confirm password: ").strip()
+    password = getpass("Choose a password: ").strip()
+    while len(password) < MIN_PASSWORD_LENGTH:
+        print_error(f"Password must be at least {MIN_PASSWORD_LENGTH} characters long.")
+        password = getpass("Choose a password: ").strip()
+    confirm = getpass("Confirm password: ").strip()
 
     if password != confirm:
         print_error("Passwords do not match.")
@@ -308,7 +313,7 @@ def cmd_register():
 def cmd_login():
     print("\n=== Login ===")
     username = input("Username: ").strip()
-    password = input("Password: ").strip()
+    password = getpass("Password: ").strip()
 
     resp = api_post("/auth/login", {"username": username, "password": password}, auth=False)
     if not resp:

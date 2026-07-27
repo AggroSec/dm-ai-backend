@@ -74,6 +74,12 @@ This project runs on free OpenRouter models by design (see Quick Start below), a
 
 If combat starts ignoring rules, dishing out inconsistent damage, or the DM seems to be "forgetting" tools it should be calling — try swapping `OPENROUTER_MODEL` / `OPENROUTER_COMBAT_MODEL` before assuming the backend is broken. The tool-calling loop, validation, and state management are all model-agnostic; the model itself is doing all the actual reasoning about *when* to call what. Combat asks a lot more of a model than freeform narrative does, which is exactly why narrative and combat get independently configurable models instead of one shared setting.
 
+## 🔒 A Note on Password Security
+
+Password requirements follow current [NIST SP 800-63B](https://pages.nist.gov/800-63-4/sp800-63b.html) guidance rather than older composition-rule conventions: a minimum length is enforced, but there's no forced mix of uppercase/numbers/symbols — NIST's latest revision explicitly recommends against those rules in favor of length alone. The minimum is a single constant, easy to tighten or loosen depending on your threat model.
+
+One NIST-recommended practice **not** implemented here: screening new passwords against known-breached/common-password lists (e.g., via the Have I Been Pwned API). For a single-user hobby project this felt like disproportionate complexity for the actual risk, but it's a real, known gap worth calling out rather than silently leaving out.
+
 ## 🛠️ Tech Stack
 
 - **Backend:** Go, `net/http` (standard library router)
@@ -200,6 +206,7 @@ Things on the roadmap beyond the capstone, roughly in the order they'd get tackl
 - 🎯 **Smarter summarization triggers** — swapping the flat message-count threshold for something token-aware, since combat and narrative generate very different token densities per message.
 - 🧑‍🤝‍🧑 **Multiplayer / couch co-op** — the combat engine is already party-aware under the hood; this is the natural next branch (kept separate from the free base).
 - 🖥️ **A real front-end** — something beyond the CLI, whether a lightweight web client or a Godot-based app, so it's easier to hand to someone who isn't comfortable in a terminal.
+- 🔑 **Breached-password screening** — check new passwords against a known-breached-password API (e.g., Have I Been Pwned) at registration time, instead of relying on length alone.
 - 🧬 **Embeddings / RAG** — proper semantic retrieval over full campaign history, for near-complete long-term recall once the free-tier-friendly approaches above stop being enough.
 - 📜 **Licensing follow-up** — exploring dual-licensing (AGPL-3.0 public base + a separate commercial license) if this grows past a pet project.
 

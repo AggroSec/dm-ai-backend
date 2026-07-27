@@ -6,11 +6,14 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"unicode/utf8"
 
 	"github.com/AggroSec/dm-ai-backend/internal/auth"
 	"github.com/AggroSec/dm-ai-backend/internal/database"
 	"github.com/jackc/pgx/v5/pgconn"
 )
+
+const MinPasswordLength = 15
 
 type registerRequest struct {
 	Username string `json:"username"`
@@ -43,6 +46,11 @@ func (s *Server) handlerRegisterUser(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		respondError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if utf8.RuneCountInString(req.Password) < MinPasswordLength {
+		respondError(w, http.StatusBadRequest, "password too short")
 		return
 	}
 
